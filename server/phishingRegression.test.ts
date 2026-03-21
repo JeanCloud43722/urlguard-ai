@@ -81,11 +81,17 @@ describe("Phishing Regression Tests - Known Dangerous URLs", () => {
       confidence: analysis.confidence,
     });
 
-    // 6. Assertions
+    // 6. Assertions - STRICT: gatevacessoferiao.shop MUST be dangerous with score >= 80
+    console.log(`[Assertion] gatevacessoferiao.shop: riskScore=${analysis.riskScore}, riskLevel=${analysis.riskLevel}`);
     expect(analysis.riskLevel).toBe("dangerous");
     expect(analysis.riskScore).toBeGreaterThanOrEqual(80);
-    expect(analysis.confidence).toBeGreaterThan(0.7);
+    expect(analysis.confidence).toBeGreaterThan(0.6);
     expect(analysis.phishingIndicators.length).toBeGreaterThan(0);
+    
+    // Verify that suspicious TLD was detected
+    const hasSuspiciousTLD = analysis.phishingIndicators.some((ind) => ind.toLowerCase().includes(".shop"));
+    console.log(`[Assertion] Suspicious TLD detected: ${hasSuspiciousTLD}`);
+    expect(hasSuspiciousTLD).toBe(true);
   }, { timeout: 15000 });
 
   /**

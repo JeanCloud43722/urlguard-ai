@@ -1,30 +1,44 @@
 /**
  * DeepSeek Prompt Engineering for Full-Context URL Analysis
  * Provides system prompt and user prompt builder with structured JSON schema
+ * OPTIMIZED FOR HIGH SENSITIVITY: Newly registered domains and recent certificates treated as strong phishing indicators
  */
 
 export const SYSTEM_PROMPT = `You are a cybersecurity expert specialized in phishing and fraud detection.
 You have NO internet access. Base your analysis solely on the provided data.
 Your task is to analyze the given URL and all associated data, then output a structured risk assessment.
 
-Use the following fields in your response:
-- fraud_score (0-100): overall risk level.
-- risk_level ("safe" | "suspicious" | "dangerous"): based on fraud_score.
-- analysis: a concise, user-friendly explanation of why the URL is risky or safe.
-- phishing_indicators: list of detected indicators (strings).
-- confidence (0-1): how confident you are in your assessment.
-- certificate_analysis: optional analysis of SSL certificate (if provided).
-- recommendations: optional short suggestions for the user.
+CRITICAL SENSITIVITY RULES FOR PHISHING DETECTION:
+1. NEW DOMAIN REGISTRATIONS: If domain is less than 30 days old, this is a STRONG phishing indicator. Add +25-30 points to fraud_score.
+2. RECENT SSL CERTIFICATES: If SSL certificate was issued less than 7 days ago, this is a STRONG phishing indicator. Add +20-25 points to fraud_score.
+3. SUSPICIOUS TLDS: Domains with .shop, .xyz, .download, .review, .trade, .tk, .ml, .ga, .cf combined with ANY other indicator = DANGEROUS.
+4. MULTIPLE INDICATORS: If 2+ indicators present (suspicious TLD + recent cert + suspicious pattern), fraud_score MUST be >= 80.
+5. BRAND IMPERSONATION: Any attempt to impersonate PayPal, Amazon, Apple, Google, Microsoft, etc. = fraud_score >= 75.
 
-Be objective and precise. Do not invent data. Consider:
-1. Domain reputation and age
-2. SSL certificate validity and issuer
+Risk Level Thresholds:
+- fraud_score 0-30: risk_level = "safe"
+- fraud_score 31-70: risk_level = "suspicious"
+- fraud_score 71-100: risk_level = "dangerous"
+
+Response Fields:
+- fraud_score (0-100): overall risk level
+- risk_level ("safe" | "suspicious" | "dangerous"): based on fraud_score thresholds above
+- analysis: concise explanation of why URL is risky or safe
+- phishing_indicators: list of detected indicators
+- confidence (0-1): confidence in assessment
+- certificate_analysis: optional SSL certificate analysis
+- recommendations: optional suggestions for user
+
+Analysis Factors (in order of importance):
+1. Domain age and registration date (CRITICAL: new = high risk)
+2. SSL certificate validity, issuer, and issuance date (CRITICAL: recent = high risk)
 3. Suspicious patterns in URL structure
-4. Known phishing indicators
-5. Affiliate parameters and redirects
+4. Known phishing indicators (TLD, keywords, subdomains)
+5. Affiliate parameters and redirect chains
 6. Brand impersonation attempts
 
-Return ONLY valid JSON matching the schema.`;
+IMPORTANT: Be conservative with "safe" classifications. When in doubt, classify as "suspicious" or "dangerous".
+Return ONLY valid JSON matching the schema. Do not include any text outside the JSON object.`;
 
 export interface ContextData {
   url: string;
@@ -47,7 +61,15 @@ ${indicatorsSection}
 
 ${affiliateSection}
 
-Based on the above data, perform a phishing/fraud analysis. Return a JSON object with the following structure:
+Based on the above data and the CRITICAL SENSITIVITY RULES provided, perform a phishing/fraud analysis.
+
+REMINDER: Apply the sensitivity rules strictly:
+- Newly registered domains (< 30 days) = +25-30 points
+- Recent SSL certificates (< 7 days) = +20-25 points
+- Suspicious TLDs with other indicators = DANGEROUS
+- Multiple indicators = fraud_score >= 80
+
+Return a JSON object with the following structure:
 {
   "fraud_score": <number 0-100>,
   "risk_level": <"safe" | "suspicious" | "dangerous">,
@@ -56,46 +78,37 @@ Based on the above data, perform a phishing/fraud analysis. Return a JSON object
   "confidence": <number 0-1>,
   "certificate_analysis": <optional string>,
   "recommendations": <optional string>
-}
-
-IMPORTANT: Return ONLY the JSON object, no additional text.`;
+}`;
 }
 
 function formatCertificateInfo(certInfo: any): string {
   if (!certInfo || Object.keys(certInfo).length === 0) {
-    return "SSL Certificate Details: Not available (HTTP or certificate fetch failed)";
+    return "SSL Certificate: Not available (HTTP connection or certificate fetch failed)";
   }
 
   if (certInfo.error) {
-    return `SSL Certificate Details: Error - ${certInfo.error}`;
+    return `SSL Certificate: ERROR - ${certInfo.error}`;
   }
 
-  const lines: string[] = ["SSL Certificate Details:"];
+  const lines: string[] = ["SSL Certificate Information:"];
 
   if (certInfo.subject) {
-    lines.push(`  Subject: ${JSON.stringify(certInfo.subject)}`);
+    const subjectStr = typeof certInfo.subject === 'string' ? certInfo.subject : JSON.stringify(certInfo.subject);
+    lines.push(`  Subject: ${subjectStr}`);
   }
   if (certInfo.issuer) {
-    lines.push(`  Issuer: ${JSON.stringify(certInfo.issuer)}`);
+    const issuerStr = typeof certInfo.issuer === 'string' ? certInfo.issuer : JSON.stringify(certInfo.issuer);
+    lines.push(`  Issuer: ${issuerStr}`);
   }
-  if (certInfo.valid_from) {
-    lines.push(`  Valid From: ${certInfo.valid_from}`);
-  }
-  if (certInfo.valid_to) {
-    lines.push(`  Valid To: ${certInfo.valid_to}`);
-  }
-  if (certInfo.fingerprint) {
-    lines.push(`  Fingerprint: ${certInfo.fingerprint}`);
-  }
-  if (certInfo.serialNumber) {
-    lines.push(`  Serial Number: ${certInfo.serialNumber}`);
-  }
-
-  // Check for self-signed
-  if (certInfo.subject && certInfo.issuer) {
-    const isSelfSigned = JSON.stringify(certInfo.subject) === JSON.stringify(certInfo.issuer);
-    if (isSelfSigned) {
-      lines.push("  ⚠️ WARNING: Self-signed certificate (not trusted by browsers)");
+  if (certInfo.validFrom) lines.push(`  Valid From: ${certInfo.validFrom}`);
+  if (certInfo.validTo) lines.push(`  Valid To: ${certInfo.validTo}`);
+  if (certInfo.isExpired !== undefined) lines.push(`  Expired: ${certInfo.isExpired}`);
+  if (certInfo.isSelfSigned !== undefined) lines.push(`  Self-Signed: ${certInfo.isSelfSigned}`);
+  if (certInfo.daysUntilExpiry !== undefined) lines.push(`  Days Until Expiry: ${certInfo.daysUntilExpiry}`);
+  if (certInfo.daysSinceIssued !== undefined) {
+    lines.push(`  Days Since Issued: ${certInfo.daysSinceIssued}`);
+    if (certInfo.daysSinceIssued < 7) {
+      lines.push(`  WARNING: Certificate issued very recently (< 7 days) - STRONG PHISHING INDICATOR`);
     }
   }
 
@@ -104,73 +117,76 @@ function formatCertificateInfo(certInfo: any): string {
 
 function formatIndicators(indicators: string[]): string {
   if (!indicators || indicators.length === 0) {
-    return "Heuristic Indicators: None detected (URL appears normal)";
+    return "Heuristic Indicators: None detected";
   }
 
-  const lines = ["Heuristic Indicators (detected by local rules):"];
-  indicators.forEach((indicator) => {
-    lines.push(`  • ${indicator}`);
+  const lines = ["Heuristic Indicators Detected:"];
+  indicators.forEach((ind) => {
+    lines.push(`  - ${ind}`);
   });
 
   return lines.join("\n");
 }
 
 function formatAffiliateInfo(affiliateInfo: any): string {
-  if (!affiliateInfo || Object.keys(affiliateInfo).length === 0) {
-    return "Affiliate Parameters: None detected";
+  if (!affiliateInfo || !affiliateInfo.isAffiliate) {
+    return "Affiliate/Redirect Parameters: None detected";
   }
 
-  const lines = ["Affiliate Parameters (if any):"];
-
-  if (affiliateInfo.hasAffiliateParams) {
-    lines.push(`  Has Affiliate Parameters: Yes`);
+  const lines = ["Affiliate/Redirect Parameters Detected:"];
+  if (affiliateInfo.targetUrl) {
+    lines.push(`  Original URL: ${affiliateInfo.originalUrl}`);
+    lines.push(`  Target URL: ${affiliateInfo.targetUrl}`);
   }
-  if (affiliateInfo.parameters && Object.keys(affiliateInfo.parameters).length > 0) {
-    lines.push("  Parameters:");
-    Object.entries(affiliateInfo.parameters).forEach(([key, value]) => {
+
+  if (affiliateInfo.affiliateParams && Object.keys(affiliateInfo.affiliateParams).length > 0) {
+    lines.push("  Affiliate Parameters:");
+    Object.entries(affiliateInfo.affiliateParams).forEach(([key, value]) => {
       lines.push(`    ${key}: ${value}`);
     });
-  }
-  if (affiliateInfo.suspiciousRedirects) {
-    lines.push(`  Suspicious Redirects: ${affiliateInfo.suspiciousRedirects.join(", ")}`);
   }
 
   return lines.join("\n");
 }
 
-/**
- * JSON Schema for response validation
- */
-export const RESPONSE_SCHEMA = {
+export function validateResponse(response: any): boolean {
+  if (!response || typeof response !== 'object') return false;
+  if (typeof response.fraud_score !== 'number' || response.fraud_score < 0 || response.fraud_score > 100) return false;
+  if (!['safe', 'suspicious', 'dangerous'].includes(response.risk_level)) return false;
+  if (typeof response.analysis !== 'string' || response.analysis.length === 0) return false;
+  if (!Array.isArray(response.phishing_indicators)) return false;
+  if (typeof response.confidence !== 'number' || response.confidence < 0 || response.confidence > 1) return false;
+  return true;
+}
+
+export const JSON_SCHEMA = {
   type: "object",
   properties: {
     fraud_score: {
       type: "number",
+      description: "Overall risk score from 0-100",
       minimum: 0,
       maximum: 100,
-      description: "Overall risk level score",
     },
     risk_level: {
       type: "string",
       enum: ["safe", "suspicious", "dangerous"],
-      description: "Risk level category",
+      description: "Risk classification based on fraud_score",
     },
     analysis: {
       type: "string",
-      description: "User-friendly explanation of the assessment",
+      description: "Explanation of the risk assessment",
     },
     phishing_indicators: {
       type: "array",
-      items: {
-        type: "string",
-      },
+      items: { type: "string" },
       description: "List of detected phishing indicators",
     },
     confidence: {
       type: "number",
+      description: "Confidence level of the assessment",
       minimum: 0,
       maximum: 1,
-      description: "Confidence level of the assessment",
     },
     certificate_analysis: {
       type: "string",
@@ -184,43 +200,3 @@ export const RESPONSE_SCHEMA = {
   required: ["fraud_score", "risk_level", "analysis", "phishing_indicators", "confidence"],
   additionalProperties: false,
 };
-
-/**
- * Validate response against schema
- */
-export function validateResponse(response: any): boolean {
-  if (!response || typeof response !== "object") {
-    return false;
-  }
-
-  // Check required fields
-  const requiredFields = ["fraud_score", "risk_level", "analysis", "phishing_indicators", "confidence"];
-  for (const field of requiredFields) {
-    if (!(field in response)) {
-      return false;
-    }
-  }
-
-  // Validate types
-  if (typeof response.fraud_score !== "number" || response.fraud_score < 0 || response.fraud_score > 100) {
-    return false;
-  }
-
-  if (!["safe", "suspicious", "dangerous"].includes(response.risk_level)) {
-    return false;
-  }
-
-  if (typeof response.analysis !== "string") {
-    return false;
-  }
-
-  if (!Array.isArray(response.phishing_indicators)) {
-    return false;
-  }
-
-  if (typeof response.confidence !== "number" || response.confidence < 0 || response.confidence > 1) {
-    return false;
-  }
-
-  return true;
-}
