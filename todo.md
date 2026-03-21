@@ -155,3 +155,38 @@
 - [ ] Frontend-Toggle für VirusTotal-Aktivierung
 - [ ] Caching & Rate-Limiting
 - [ ] Screenshot-Capture für gefährliche URLs
+
+
+## Phase 9: Frontend VirusTotal-Toggle (Neu)
+
+### Toggle-Komponente
+- [x] VirusTotalToggle.tsx mit Checkbox und Label
+- [x] Info-Icon mit Tooltip
+- [x] Styling mit Tailwind und Gradient
+- [x] Responsive Design
+- [x] Status-Badge (Enabled/Scanning)
+
+### Loading & Feedback
+- [x] Loading-Spinner während VT-Abfrage
+- [x] Echtzeit-Status-Anzeige mit Pulse Animation
+- [x] Toast-Benachrichtigungen
+- [x] Fehler-Handling UI
+
+### Ergebnisanzeige
+- [x] VirusTotalResults.tsx Komponente
+- [x] Malicious/Suspicious/Harmless Counts Grid
+- [x] Detection Rate Progress Bar
+- [x] Vendor-Liste mit Overflow-Handling
+- [x] Scan-Datum Formatierung
+
+### Home Page Integration
+- [x] VirusTotal-Toggle in URL-Checker Form
+- [x] includeVirusTotal State Management
+- [x] VT-Loading State Tracking
+- [x] VirusTotalResults Anzeige nach Indicators
+- [x] Toast-Benachrichtigungen
+
+### Testing & Validierung
+- [x] 85 Tests bestanden (keine neuen Fehler)
+- [x] TypeScript Compilation erfolgreich
+- [x] Dev Server läuft ohne Fehler
