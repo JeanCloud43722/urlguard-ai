@@ -31,14 +31,12 @@ export interface ContextData {
   certificateInfo: any;
   heuristicIndicators: string[];
   affiliateInfo: any;
-  virusTotalReport?: any;
 }
 
 export function buildUserPrompt(data: ContextData): string {
   const certificateSection = formatCertificateInfo(data.certificateInfo);
   const indicatorsSection = formatIndicators(data.heuristicIndicators);
   const affiliateSection = formatAffiliateInfo(data.affiliateInfo);
-  const vtSection = formatVirusTotalInfo(data.virusTotalReport);
 
   return `
 URL to analyze: ${data.url}
@@ -48,8 +46,6 @@ ${certificateSection}
 ${indicatorsSection}
 
 ${affiliateSection}
-
-${vtSection}
 
 Based on the above data, perform a phishing/fraud analysis. Return a JSON object with the following structure:
 {
@@ -137,40 +133,6 @@ function formatAffiliateInfo(affiliateInfo: any): string {
   }
   if (affiliateInfo.suspiciousRedirects) {
     lines.push(`  Suspicious Redirects: ${affiliateInfo.suspiciousRedirects.join(", ")}`);
-  }
-
-  return lines.join("\n");
-}
-
-function formatVirusTotalInfo(vtReport: any): string {
-  if (!vtReport) {
-    return "VirusTotal Report: Not requested or not available";
-  }
-
-  if (vtReport.error) {
-    return `VirusTotal Report: Error - ${vtReport.error}`;
-  }
-
-  const stats = vtReport.attributes?.last_analysis_stats;
-  const results = vtReport.attributes?.last_analysis_results;
-
-  if (!stats) {
-    return "VirusTotal Report: Invalid report structure";
-  }
-
-  const lines = ["VirusTotal Report:"];
-  lines.push(`  Scan Date: ${new Date(vtReport.attributes.last_analysis_date * 1000).toISOString()}`);
-  lines.push(`  Malicious: ${stats.malicious}`);
-  lines.push(`  Suspicious: ${stats.suspicious}`);
-  lines.push(`  Undetected: ${stats.undetected}`);
-  lines.push(`  Harmless: ${stats.harmless}`);
-
-  const maliciousVendors = Object.entries(results || {})
-    .filter(([, r]: any) => r.category === "malicious")
-    .map(([vendor]) => vendor);
-
-  if (maliciousVendors.length > 0) {
-    lines.push(`  Flagged by: ${maliciousVendors.join(", ")}`);
   }
 
   return lines.join("\n");

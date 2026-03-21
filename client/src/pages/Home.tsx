@@ -7,8 +7,6 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Shield, AlertTriangle, CheckCircle2, Link2, History } from "lucide-react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
-import { VirusTotalToggle } from "@/components/VirusTotalToggle";
-import { VirusTotalResults } from "@/components/VirusTotalResults";
 
 interface CheckResult {
   id: number;
@@ -19,12 +17,6 @@ interface CheckResult {
   analysis: string;
   indicators: string[];
   confidence: number;
-  certificateInfo?: any;
-  virusTotalReport?: {
-    malicious: number;
-    suspicious: number;
-    harmless: number;
-  };
   createdAt: Date;
 }
 
@@ -34,8 +26,6 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [showHistory, setShowHistory] = useState(false);
-  const [includeVirusTotal, setIncludeVirusTotal] = useState(false);
-  const [vtLoading, setVtLoading] = useState(false);
 
   const checkURLMutation = trpc.urlChecker.checkURL.useMutation();
   const historyQuery = trpc.urlChecker.getHistory.useQuery({ limit: 10 }, { enabled: showHistory && isAuthenticated });
@@ -48,26 +38,15 @@ export default function Home() {
     }
 
     setIsLoading(true);
-    if (includeVirusTotal) {
-      setVtLoading(true);
-    }
     try {
-      const res = await checkURLMutation.mutateAsync({
-        url: urlInput,
-        includeVirusTotal,
-      });
+      const res = await checkURLMutation.mutateAsync({ url: urlInput });
       setResult(res as CheckResult);
       setUrlInput("");
-      if (includeVirusTotal) {
-        toast.success("URL analyzed with VirusTotal scan");
-      } else {
-        toast.success("URL analyzed successfully");
-      }
+      toast.success("URL analyzed successfully");
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
       setIsLoading(false);
-      setVtLoading(false);
     }
   };
 
@@ -179,16 +158,6 @@ export default function Home() {
                   </Button>
                 </div>
               </div>
-
-              {/* VirusTotal Toggle */}
-              {isAuthenticated && (
-                <VirusTotalToggle
-                  checked={includeVirusTotal}
-                  onChange={setIncludeVirusTotal}
-                  disabled={isLoading}
-                  isLoading={vtLoading}
-                />
-              )}
             </form>
           </Card>
         </div>
@@ -227,7 +196,7 @@ export default function Home() {
 
               {/* Indicators */}
               {result.indicators.length > 0 && (
-                <div className="mb-6">
+                <div>
                   <p className="text-sm font-semibold text-slate-700 mb-3">Detected Indicators</p>
                   <div className="space-y-2">
                     {result.indicators.map((indicator, idx) => (
@@ -237,16 +206,6 @@ export default function Home() {
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
-
-              {/* VirusTotal Results */}
-              {result.virusTotalReport && (
-                <div className="mt-6">
-                  <VirusTotalResults
-                    stats={result.virusTotalReport}
-                    scanDate={result.createdAt?.toString()}
-                  />
                 </div>
               )}
             </Card>

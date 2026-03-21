@@ -9,5 +9,4 @@ export const ENV = {
   forgeApiKey: process.env.BUILT_IN_FORGE_API_KEY ?? "",
   deepseekApiKey: process.env.DEEPSEEK_API_KEY ?? "",
   deepseekApiUrl: process.env.DEEPSEEK_API_URL ?? "https://api.deepseek.com/v1",
-  virusTotalApiKey: process.env.VIRUSTOTAL_API_KEY ?? "",
 };

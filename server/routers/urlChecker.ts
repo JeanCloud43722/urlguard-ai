@@ -4,14 +4,13 @@ import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs } fr
 import { getDeepSeekClient } from "../analyzers/deepseekEnhanced";
 import { validateAndNormalizeURL, extractAffiliateInfo, checkPhishingIndicators } from "../analyzers/urlAnalyzer";
 import { fetchCertificate, extractCertificateRisks } from "../utils/certificate";
-import { getVirusTotalReport } from "../services/virusTotal";
 import { nanoid } from "nanoid";
 import { notifyOwner } from "../_core/notification";
 import { generateJSONReport, generateCSVReport, generateHTMLReport } from "../utils/exportReport";
 
 export const urlCheckerRouter = router({
   checkURL: protectedProcedure
-    .input(z.object({ url: z.string().min(1), includeVirusTotal: z.boolean().optional().default(false) }))
+    .input(z.object({ url: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       try {
         // 1. Validate and normalize URL
@@ -42,30 +41,19 @@ export const urlCheckerRouter = router({
           }
         }
 
-        // 5. Fetch VirusTotal report (if requested)
-        let vtReport = null;
-        if (input.includeVirusTotal) {
-          try {
-            vtReport = await getVirusTotalReport(validation.normalizedUrl);
-          } catch (err) {
-            console.warn("[URLChecker] Could not fetch VirusTotal report:", err);
-          }
-        }
-
-        // 6. Analyze with DeepSeek using full context
+        // 5. Analyze with DeepSeek using full context
         const deepseekClient = getDeepSeekClient();
         const deepseekAnalysis = await deepseekClient.analyzeWithFullContext(
           validation.normalizedUrl,
           certificateInfo,
           [...localIndicators, ...certificateRisks],
-          affiliateInfo,
-          vtReport
+          affiliateInfo
         );
 
-        // 7. Combine all indicators (heuristic + certificate + AI)
+        // 6. Combine all indicators (heuristic + certificate + AI)
         const allReasons = [...localIndicators, ...certificateRisks, ...deepseekAnalysis.phishingIndicators];
 
-        // 8. Create database record
+        // 7. Create database record
         await createURLCheck({
           userId: ctx.user.id,
           url: input.url,
@@ -77,7 +65,7 @@ export const urlCheckerRouter = router({
           affiliateInfo: JSON.stringify(affiliateInfo),
         });
 
-        // 9. Notify owner if dangerous
+        // 8. Notify owner if dangerous
         if (deepseekAnalysis.riskLevel === "dangerous") {
           const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
           await notifyOwner({
@@ -86,7 +74,7 @@ export const urlCheckerRouter = router({
           });
         }
 
-        // 10. Return result
+        // 9. Return result
         return {
           id: Date.now(),
           url: input.url,
@@ -101,11 +89,6 @@ export const urlCheckerRouter = router({
             isSelfSigned: certificateInfo.subject && certificateInfo.issuer && JSON.stringify(certificateInfo.subject) === JSON.stringify(certificateInfo.issuer),
             hasRisks: certificateRisks.length > 0,
           },
-          virusTotalReport: vtReport ? {
-            malicious: vtReport.attributes?.last_analysis_stats?.malicious || 0,
-            suspicious: vtReport.attributes?.last_analysis_stats?.suspicious || 0,
-            harmless: vtReport.attributes?.last_analysis_stats?.harmless || 0,
-          } : null,
           createdAt: new Date(),
         };
       } catch (error) {
