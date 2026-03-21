@@ -88,3 +88,38 @@
 - [x] LLM Adapter Pattern implementiert
 - [x] 20 Optimization Tests (alle bestanden)
 - [x] Umfassende Dokumentation (DEEPSEEK_OPTIMIZATION.md)
+
+
+## Phase 7: Erweiterte DeepSeek-Kontext-Integration (Neu)
+
+### Prompt & JSON-Schema
+- [x] deepseekPrompt.ts mit SYSTEM_PROMPT und buildUserPrompt
+- [x] JSON-Schema für strukturierte Responses
+- [x] Response-Format mit type: "json_object"
+- [x] Response-Validierung
+
+### SSL-Zertifikat-Abruf
+- [x] certificate.ts mit fetchCertificate() Funktion
+- [x] TLS-Connection mit Timeout
+- [x] Error-Handling für Zertifikatsfehler
+- [x] Zertifikat-Validierung und Risiko-Extraktion
+
+### DeepSeek-Client Erweiterung
+- [x] analyzeWithFullContext() Methode
+- [x] Kontext-Zusammenstellung (Zertifikat, Indikatoren, Affiliate)
+- [x] Retry-Logik für erweiterte Anfragen
+- [x] Metriken-Tracking
+
+### URL-Checker Integration
+- [x] Zertifikatsdaten sammeln
+- [x] Heuristische Indikatoren sammeln
+- [x] Affiliate-Info sammeln
+- [x] analyzeWithFullContext aufrufen
+- [x] Kombinierte Indikatoren zurückgeben
+- [x] Owner-Benachrichtigungen mit vollständigen Details
+
+### Testing & Validierung
+- [x] Tests für Zertifikat-Abruf (22 Tests)
+- [x] Tests für Kontext-Prompt
+- [x] Tests für JSON-Schema Validierung
+- [x] Alle 68 Tests bestanden

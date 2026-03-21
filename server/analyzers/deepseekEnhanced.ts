@@ -231,6 +231,70 @@ export class EnhancedDeepSeekClient {
   resetMetrics() {
     this.requestMetrics.clear();
   }
+
+  /**
+   * Analyze URL with full context (certificate, indicators, affiliate info)
+   */
+  async analyzeWithFullContext(
+    url: string,
+    certificateInfo: any,
+    heuristicIndicators: string[],
+    affiliateInfo: any
+  ): Promise<PhishingAnalysisResult> {
+    const { SYSTEM_PROMPT, buildUserPrompt, validateResponse } = await import("./deepseekPrompt");
+    const userPrompt = buildUserPrompt({ url, certificateInfo, heuristicIndicators, affiliateInfo });
+    const startTime = Date.now();
+    const operationName = `analyzeFullContext:${url}`;
+
+    try {
+      const result = await this.retryWithBackoff(async () => {
+        const response = await this.client.post(
+          "/chat/completions",
+          {
+            model: "deepseek-chat",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 800,
+            response_format: { type: "json_object" },
+          },
+          { timeout: this.timeoutConfig.longTimeout }
+        );
+
+        const content = response.data.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error("Invalid DeepSeek response: no content");
+        }
+
+        const parsed = JSON.parse(content);
+
+        // Validate response structure
+        if (!validateResponse(parsed)) {
+          throw new Error("Invalid response structure from DeepSeek");
+        }
+
+        const tokensUsed = response.data.usage?.total_tokens || 0;
+        this.recordMetric(operationName, tokensUsed, Date.now() - startTime);
+
+        return {
+          riskScore: parsed.fraud_score,
+          riskLevel: parsed.risk_level,
+          analysis: parsed.analysis,
+          phishingIndicators: parsed.phishing_indicators || [],
+          confidence: parsed.confidence,
+          tokensUsed,
+          cached: false,
+        };
+      }, operationName);
+
+      return result;
+    } catch (error) {
+      console.error(`[DeepSeek] ${operationName} failed:`, (error as Error).message);
+      throw new Error(`DeepSeek full context analysis failed: ${(error as Error).message}`);
+    }
+  }
 }
 
 // Singleton instance
