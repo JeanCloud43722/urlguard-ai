@@ -123,3 +123,35 @@
 - [x] Tests für Kontext-Prompt
 - [x] Tests für JSON-Schema Validierung
 - [x] Alle 68 Tests bestanden
+
+
+## Phase 8: VirusTotal-Integration (Neu)
+
+### API-Konfiguration
+- [x] VIRUSTOTAL_API_KEY in ENV hinzufügen
+- [x] VirusTotal Service (virusTotal.ts) implementieren
+- [x] URL-ID-Generierung (Base64)
+- [x] Error-Handling für API-Fehler
+
+### DeepSeek-Prompt Erweiterung
+- [x] buildUserPrompt mit virusTotalReport Parameter
+- [x] VT-Section im Prompt (Malicious Vendors, Scan-Datum)
+- [x] formatVirusTotalInfo Funktion
+- [x] Response-Schema erweitern
+
+### tRPC-Router Update
+- [x] includeVirusTotal Boolean-Flag hinzufügen
+- [x] analyzeWithFullContext mit VT-Report aufrufen
+- [x] VT-Report in Response zurückgeben
+- [x] Fallback bei VT-Fehler
+
+### Testing & Validierung
+- [x] 17 Tests für VirusTotal-Service (alle bestanden)
+- [x] Tests für Prompt-Erweiterung
+- [x] Tests für Router-Integration
+- [x] Alle 85 Tests bestanden
+
+### Noch zu implementieren
+- [ ] Frontend-Toggle für VirusTotal-Aktivierung
+- [ ] Caching & Rate-Limiting
+- [ ] Screenshot-Capture für gefährliche URLs

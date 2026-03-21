@@ -233,16 +233,17 @@ export class EnhancedDeepSeekClient {
   }
 
   /**
-   * Analyze URL with full context (certificate, indicators, affiliate info)
+   * Analyze URL with full context (certificate, indicators, affiliate info, VirusTotal report)
    */
   async analyzeWithFullContext(
     url: string,
     certificateInfo: any,
     heuristicIndicators: string[],
-    affiliateInfo: any
+    affiliateInfo: any,
+    virusTotalReport?: any
   ): Promise<PhishingAnalysisResult> {
     const { SYSTEM_PROMPT, buildUserPrompt, validateResponse } = await import("./deepseekPrompt");
-    const userPrompt = buildUserPrompt({ url, certificateInfo, heuristicIndicators, affiliateInfo });
+    const userPrompt = buildUserPrompt({ url, certificateInfo, heuristicIndicators, affiliateInfo, virusTotalReport });
     const startTime = Date.now();
     const operationName = `analyzeFullContext:${url}`;
 
