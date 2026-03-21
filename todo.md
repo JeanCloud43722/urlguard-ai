@@ -49,3 +49,42 @@
 - [ ] Fehlertoleranz und Fallback-Mechanismen
 - [ ] Datenschutz und Sicherheit
 - [ ] Skalierbarkeit für Batch-Operationen
+
+
+## Phase 6: DeepSeek-Optimierungen (Neu)
+
+### Retry-Mechanismen & Timeouts
+- [x] DeepSeek-Client mit exponentieller Backoff-Logik
+- [x] Timeout-Konfiguration (10s kurz, 30s lang)
+- [x] Rate-Limit-Handling mit automatischem Retry
+- [x] Jitter zur Vermeidung von Thundering Herd
+
+### Caching & Kostenkontrolle
+- [x] In-Memory Cache mit TTL
+- [x] TTL-basiertes Caching (24h für exakte URLs, 1h für ähnliche)
+- [x] Token-Budget pro Request (max. 500 Tokens)
+- [x] Parallele API-Aufrufe pro Nutzer limitieren (max 5)
+
+### Streaming & Function Calling
+- [x] Function Calling für strukturierte Ergebnisse
+- [x] JSON-Schema für Phishing-Bewertung
+- [x] Streaming-Support vorbereitet
+
+### Monitoring & Observability
+- [x] Metriken-Tracking (Requests, Duration, Tokens)
+- [x] Strukturierte Logs mit Kontext
+- [x] API-Key-Fehler-Logging
+- [x] Performance-Monitoring
+
+### Zukunftsorientierte Architektur
+- [x] LLM-Adapter-Pattern (abstrakte Klasse)
+- [x] Austauschbare LLM-Provider (Framework)
+- [x] Prompt-Versionierung (v1, v2 verfügbar)
+- [x] Dokumentation für API-Änderungen
+
+### Integration & Testing
+- [x] Enhanced DeepSeek Client implementiert
+- [x] LLM Cache System implementiert
+- [x] LLM Adapter Pattern implementiert
+- [x] 20 Optimization Tests (alle bestanden)
+- [x] Umfassende Dokumentation (DEEPSEEK_OPTIMIZATION.md)
