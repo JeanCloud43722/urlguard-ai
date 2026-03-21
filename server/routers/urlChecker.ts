@@ -7,6 +7,7 @@ import { fetchCertificate, extractCertificateRisks } from "../utils/certificate"
 import { nanoid } from "nanoid";
 import { notifyOwner } from "../_core/notification";
 import { generateJSONReport, generateCSVReport, generateHTMLReport } from "../utils/exportReport";
+import { getScreenshotJobProcessor } from "../queues/screenshotJob";
 
 export const urlCheckerRouter = router({
   checkURL: protectedProcedure
@@ -54,7 +55,7 @@ export const urlCheckerRouter = router({
         const allReasons = [...localIndicators, ...certificateRisks, ...deepseekAnalysis.phishingIndicators];
 
         // 7. Create database record
-        await createURLCheck({
+        const urlCheckRecord = await createURLCheck({
           userId: ctx.user.id,
           url: input.url,
           normalizedUrl: validation.normalizedUrl,
@@ -65,7 +66,25 @@ export const urlCheckerRouter = router({
           affiliateInfo: JSON.stringify(affiliateInfo),
         });
 
-        // 8. Notify owner if dangerous
+        // 8. Enqueue screenshot job if dangerous
+        if (deepseekAnalysis.riskLevel === "dangerous") {
+          try {
+            const processor = await getScreenshotJobProcessor();
+            await processor.enqueueScreenshot({
+              urlCheckId: urlCheckRecord.id,
+              userId: ctx.user.id,
+              url: validation.normalizedUrl,
+              riskLevel: deepseekAnalysis.riskLevel,
+              timestamp: Date.now(),
+            });
+            console.log(`[URLChecker] Screenshot job enqueued for URL: ${validation.normalizedUrl}`);
+          } catch (error) {
+            console.error("[URLChecker] Failed to enqueue screenshot job:", error);
+            // Don't fail the main analysis if screenshot job fails
+          }
+        }
+
+        // 9. Notify owner if dangerous
         if (deepseekAnalysis.riskLevel === "dangerous") {
           const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
           await notifyOwner({

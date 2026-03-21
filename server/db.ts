@@ -93,8 +93,10 @@ export async function getUserByOpenId(openId: string) {
 export async function createURLCheck(check: InsertURLCheck) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
-  const result = await db.insert(urlChecks).values(check);
-  return result;
+  await db.insert(urlChecks).values(check);
+  // Fetch the inserted record to get the ID
+  const inserted = await db.select().from(urlChecks).where(eq(urlChecks.normalizedUrl, check.normalizedUrl)).orderBy(desc(urlChecks.createdAt)).limit(1);
+  return inserted[0];
 }
 
 export async function getUserURLChecks(userId: number, limit = 50) {
