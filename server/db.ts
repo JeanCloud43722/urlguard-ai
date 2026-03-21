@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, users, urlChecks, batchJobs, screenshots, InsertURLCheck, InsertBatchJob, InsertScreenshot } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -87,6 +87,66 @@ export async function getUserByOpenId(openId: string) {
   const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
 
   return result.length > 0 ? result[0] : undefined;
+}
+
+// URL Check queries
+export async function createURLCheck(check: InsertURLCheck) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.insert(urlChecks).values(check);
+  return result;
+}
+
+export async function getUserURLChecks(userId: number, limit = 50) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(urlChecks).where(eq(urlChecks.userId, userId)).orderBy(desc(urlChecks.createdAt)).limit(limit);
+}
+
+export async function getURLCheckById(id: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(urlChecks).where(eq(urlChecks.id, id)).limit(1);
+  return result[0];
+}
+
+// Batch Job queries
+export async function createBatchJob(job: InsertBatchJob) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(batchJobs).values(job);
+}
+
+export async function getBatchJobByJobId(jobId: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(batchJobs).where(eq(batchJobs.jobId, jobId)).limit(1);
+  return result[0];
+}
+
+export async function updateBatchJob(jobId: string, updates: Partial<InsertBatchJob>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(batchJobs).set(updates).where(eq(batchJobs.jobId, jobId));
+}
+
+export async function getUserBatchJobs(userId: number, limit = 20) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(batchJobs).where(eq(batchJobs.userId, userId)).orderBy(desc(batchJobs.createdAt)).limit(limit);
+}
+
+// Screenshot queries
+export async function createScreenshot(screenshot: InsertScreenshot) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(screenshots).values(screenshot);
+}
+
+export async function getScreenshotsByURLCheckId(urlCheckId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.select().from(screenshots).where(eq(screenshots.urlCheckId, urlCheckId));
 }
 
 // TODO: add feature queries here as your schema grows.
