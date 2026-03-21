@@ -123,3 +123,25 @@
 - [x] Tests für Kontext-Prompt
 - [x] Tests für JSON-Schema Validierung
 - [x] Alle 68 Tests bestanden
+
+
+## Phase 10: VirusTotal Removal & Regression Testing
+
+### VirusTotal Integration Removal
+- [x] Verified: No VirusTotal code found in current v3.0 codebase
+- [x] Confirmed: Full-Context DeepSeek Analysis is primary detection method
+- [x] Status: System is clean and reliable
+
+### Phishing Regression Tests
+- [x] Created phishingRegression.test.ts with known phishing URLs
+- [x] Test Case 1: gatevacessoferiao.shop (suspicious .shop TLD)
+- [x] Test Case 2: google.com (legitimate - safe classification)
+- [x] Test Case 3: IP address URLs (dangerous classification)
+- [x] Enhanced URL analyzer with .shop, .xyz, .download, .review, .trade TLDs
+- [x] All regression tests passing
+
+### Quality Assurance
+- [x] 85+ tests passing (no regressions)
+- [x] TypeScript compilation successful
+- [x] Dev server running without errors
+- [x] Full-context analysis working reliably

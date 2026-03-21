@@ -128,9 +128,9 @@ export function checkPhishingIndicators(urlString: string): string[] {
   }
 
   // Check for suspicious TLDs
-  const suspiciousTLDs = [".tk", ".ml", ".ga", ".cf"];
+  const suspiciousTLDs = [".tk", ".ml", ".ga", ".cf", ".shop", ".xyz", ".download", ".review", ".trade"];
   if (suspiciousTLDs.some((tld) => hostname.endsWith(tld))) {
-    indicators.push("Suspicious top-level domain");
+    indicators.push(`Suspicious top-level domain: ${suspiciousTLDs.find((tld) => hostname.endsWith(tld))}`);
   }
 
   // Check for excessive subdomains
