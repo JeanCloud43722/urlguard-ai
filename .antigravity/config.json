@@ -1,0 +1,261 @@
+{
+  "project": {
+    "name": "URLGuard AI",
+    "description": "Phishing Detection with DeepSeek AI",
+    "version": "5.2.0",
+    "author": "Migration Specialist Agent",
+    "license": "MIT"
+  },
+  "ide": {
+    "theme": "dark",
+    "fontSize": 14,
+    "fontFamily": "Fira Code",
+    "lineHeight": 1.6,
+    "wordWrap": "on"
+  },
+  "runtime": {
+    "type": "node",
+    "version": "22.13.0",
+    "packageManager": "pnpm",
+    "nodeOptions": "--max-old-space-size=4096"
+  },
+  "development": {
+    "port": 3000,
+    "host": "localhost",
+    "protocol": "http",
+    "debugPort": 9229,
+    "debugProtocol": "inspector",
+    "autoReload": true,
+    "sourceMap": true
+  },
+  "scripts": {
+    "dev": "NODE_ENV=development tsx watch server/_core/index.ts",
+    "build": "vite build && esbuild server/_core/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "start": "NODE_ENV=production node dist/index.js",
+    "test": "vitest run",
+    "check": "tsc --noEmit",
+    "format": "prettier --write .",
+    "db:push": "drizzle-kit generate && drizzle-kit migrate"
+  },
+  "services": {
+    "redis": {
+      "host": "localhost",
+      "port": 6379,
+      "enabled": true,
+      "autoStart": true
+    },
+    "mysql": {
+      "host": "localhost",
+      "port": 3306,
+      "database": "urlguard_ai",
+      "user": "root",
+      "enabled": true,
+      "autoStart": true
+    }
+  },
+  "extensions": [
+    "ms-python.python",
+    "dbaeumer.vscode-eslint",
+    "esbenp.prettier-vscode",
+    "bradlc.vscode-tailwindcss",
+    "ms-playwright.playwright",
+    "eamodio.gitlens",
+    "ms-mssql.mssql"
+  ],
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Dev Server",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder}/node_modules/.bin/tsx",
+        "args": ["watch", "server/_core/index.ts"],
+        "env": {
+          "NODE_ENV": "development"
+        },
+        "console": "integratedTerminal",
+        "internalConsoleOptions": "neverOpen",
+        "skipFiles": ["<node_internals>/**"]
+      },
+      {
+        "name": "Attach Debugger",
+        "type": "node",
+        "request": "attach",
+        "port": 9229,
+        "skipFiles": ["<node_internals>/**"],
+        "localRoot": "${workspaceFolder}",
+        "remoteRoot": "/workspace/urlguard-ai"
+      },
+      {
+        "name": "Production Build",
+        "type": "node",
+        "request": "launch",
+        "program": "${workspaceFolder}/dist/index.js",
+        "env": {
+          "NODE_ENV": "production"
+        },
+        "console": "integratedTerminal"
+      }
+    ]
+  },
+  "tasks": {
+    "build": {
+      "label": "Build Project",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["build"],
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    "test": {
+      "label": "Run Tests",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["test"],
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    "typecheck": {
+      "label": "Type Check",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["check"],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    "format": {
+      "label": "Format Code",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["format"],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    "docker:up": {
+      "label": "Start Docker Services (Redis + MySQL)",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["up", "-d"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    "docker:down": {
+      "label": "Stop Docker Services",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["down"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    "docker:logs": {
+      "label": "View Docker Logs",
+      "type": "shell",
+      "command": "docker-compose",
+      "args": ["logs", "-f"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      },
+      "isBackground": true
+    },
+    "db:migrate": {
+      "label": "Run Database Migrations",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["db:push"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    "install": {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "pnpm",
+      "args": ["install"],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  },
+  "keybindings": [
+    {
+      "key": "ctrl+shift+b",
+      "command": "workbench.action.tasks.runTask",
+      "args": "Build Project"
+    },
+    {
+      "key": "ctrl+shift+t",
+      "command": "workbench.action.tasks.runTask",
+      "args": "Run Tests"
+    },
+    {
+      "key": "ctrl+shift+f",
+      "command": "workbench.action.tasks.runTask",
+      "args": "Format Code"
+    }
+  ],
+  "editor": {
+    "formatOnSave": true,
+    "defaultFormatter": "esbenp.prettier-vscode",
+    "rulers": [80, 120],
+    "renderWhitespace": "boundary",
+    "trimAutoWhitespace": true
+  },
+  "files": {
+    "exclude": {
+      "**/.git": true,
+      "**/node_modules": true,
+      "**/.vite": true,
+      "**/dist": true,
+      "**/.env": true
+    },
+    "watcherExclude": {
+      "**/.git/objects/**": true,
+      "**/node_modules/**": true,
+      "**/.vite/**": true,
+      "**/dist/**": true
+    }
+  },
+  "search": {
+    "exclude": {
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/.vite": true,
+      "**/.git": true
+    }
+  },
+  "git": {
+    "ignoreLimitWarning": true,
+    "autofetch": true
+  },
+  "terminal": {
+    "integrated": {
+      "fontSize": 13,
+      "fontFamily": "Fira Code",
+      "scrollback": 1000
+    }
+  }
+}
