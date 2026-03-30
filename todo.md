@@ -145,3 +145,31 @@
 - [x] TypeScript compilation successful
 - [x] Dev server running without errors
 - [x] Full-context analysis working reliably
+
+
+## Phase 11: Brand-Impersonation-Erkennung und Detaillierte Erkl\u00e4rungen
+
+### Problem-Statement
+- [ ] Lidl-Phishing-URL (loporty.shop) erkannt, aber Erkl\u00e4rung zu generisch
+- [ ] Fehlende Brand-Impersonation-Erkennung
+- [ ] Keine detaillierten Erkl\u00e4rungen f\u00fcr bekannte Phishing-Muster
+
+### DeepSeek-Prompt Optimierung
+- [ ] Brand-Impersonation-Erkennung in SYSTEM_PROMPT hinzuf\u00fcgen
+- [ ] Detaillierte Erkl\u00e4rungen f\u00fcr Lidl, Amazon, PayPal, etc.
+- [ ] Kontext-Hinweise f\u00fcr bekannte Phishing-Kampagnen
+- [ ] Verbesserte Risk-Score-Berechnung f\u00fcr Brand-Attacks
+
+### Bekannte Phishing-Muster-Datenbank
+- [ ] Lidl-Phishing-Muster dokumentieren
+- [ ] Amazon-Phishing-Muster dokumentieren
+- [ ] PayPal-Phishing-Muster dokumentieren
+- [ ] Bank-Phishing-Muster dokumentieren
+- [ ] Social-Engineering-Muster dokumentieren
+
+### Implementation
+- [ ] Brand-Impersonation-Detector Service
+- [ ] Known-Phishing-Patterns Datenbank
+- [ ] Enhanced Explanation Generator
+- [ ] Integration in DeepSeek-Prompt
+- [ ] Tests f\u00fcr Brand-Impersonation-Erkennung

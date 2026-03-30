@@ -51,6 +51,7 @@ export function buildUserPrompt(data: ContextData): string {
   const certificateSection = formatCertificateInfo(data.certificateInfo);
   const indicatorsSection = formatIndicators(data.heuristicIndicators);
   const affiliateSection = formatAffiliateInfo(data.affiliateInfo);
+  const brandSection = formatBrandImpersonationContext(data.url);
 
   return `
 URL to analyze: ${data.url}
@@ -60,6 +61,8 @@ ${certificateSection}
 ${indicatorsSection}
 
 ${affiliateSection}
+
+${brandSection}
 
 Based on the above data and the CRITICAL SENSITIVITY RULES provided, perform a phishing/fraud analysis.
 
@@ -126,6 +129,50 @@ function formatIndicators(indicators: string[]): string {
   });
 
   return lines.join("\n");
+}
+
+function formatBrandImpersonationContext(url: string): string {
+  const brandPatterns: Record<string, { keywords: string[]; risk: string }> = {
+    lidl: {
+      keywords: ['lidl', 'loporty', 'lidi', 'lidle'],
+      risk: 'Lidl supermarket phishing - typically offers fake discounts or product deals',
+    },
+    amazon: {
+      keywords: ['amazon', 'amazn', 'amzn'],
+      risk: 'Amazon account verification phishing - attempts to steal login credentials',
+    },
+    paypal: {
+      keywords: ['paypal', 'pay-pal', 'paypa1'],
+      risk: 'PayPal account verification phishing - attempts to steal payment credentials',
+    },
+    apple: {
+      keywords: ['apple', 'icloud', 'itunes'],
+      risk: 'Apple/iCloud phishing - attempts to steal Apple ID credentials',
+    },
+    microsoft: {
+      keywords: ['microsoft', 'outlook', 'office365'],
+      risk: 'Microsoft/Office365 phishing - attempts to steal Microsoft account credentials',
+    },
+    google: {
+      keywords: ['google', 'gmail', 'goog1e'],
+      risk: 'Google/Gmail phishing - attempts to steal Google account credentials',
+    },
+  };
+
+  const urlLower = url.toLowerCase();
+  const detectedBrands: string[] = [];
+
+  for (const [brand, data] of Object.entries(brandPatterns)) {
+    if (data.keywords.some(kw => urlLower.includes(kw))) {
+      detectedBrands.push(`${brand.toUpperCase()}: ${data.risk}`);
+    }
+  }
+
+  if (detectedBrands.length > 0) {
+    return `BRAND IMPERSONATION ALERT:\n${detectedBrands.map(b => `  • ${b}`).join('\n')}\n\nIf this URL contains brand impersonation, significantly increase fraud_score (add +15-25 points).`;
+  }
+
+  return 'Brand Impersonation: No obvious brand impersonation detected';
 }
 
 function formatAffiliateInfo(affiliateInfo: any): string {
