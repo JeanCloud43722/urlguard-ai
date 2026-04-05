@@ -143,15 +143,15 @@ export default function Home() {
             )}
           </div>
         </div>
-        {/* BorderGlow Bottom Border - Optimized */}
-        <div className="absolute bottom-0 left-0 right-0 h-1.5 z-40 w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent">
+        {/* BorderGlow Bottom Border */}
+        <div className="absolute bottom-0 left-0 right-0 h-1 z-40 w-full">
           <BorderGlow 
             glowColor="210 100 50" 
             borderRadius={0} 
-            glowIntensity={0.8} 
-            edgeSensitivity={50}
+            glowIntensity={1.2} 
+            edgeSensitivity={40}
             backgroundColor="#060010"
-            animated={false}
+            animated={true}
           >
             <div className="w-full h-full" />
           </BorderGlow>
