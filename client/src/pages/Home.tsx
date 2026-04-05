@@ -91,7 +91,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark">
+    <div className="min-h-screen w-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark">
       {/* Header */}
       <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -121,7 +121,8 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="container mx-auto px-4 py-12">
+      <div className="w-full px-4 py-12">
+        <div className="max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-100 mb-4">
@@ -132,8 +133,8 @@ export default function Home() {
           </p>
         </div>
 
-        {/* URL Checker Card */}
-        <div className="max-w-2xl mx-auto mb-12">
+          {/* URL Checker Card */}
+          <div className="max-w-2xl mx-auto mb-12">
           <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
             <Card className="p-8 shadow-lg border-0 bg-slate-800 text-slate-100">
             <form onSubmit={handleCheckURL} className="space-y-4">
@@ -171,8 +172,8 @@ export default function Home() {
           </BorderGlow>
         </div>
 
-        {/* Loading State */}
-        {isLoading && (
+          {/* Loading State */}
+          {isLoading && (
           <div className="max-w-2xl mx-auto mb-12">
             <BorderGlow 
               glowColor="210 100 50"
@@ -197,10 +198,10 @@ export default function Home() {
               </Card>
             </BorderGlow>
           </div>
-        )}
+          )}
 
-        {/* Results Section */}
-        {result && (
+          {/* Results Section */}
+          {result && (
           <div className="max-w-2xl mx-auto mb-12">
             <BorderGlow 
               glowColor={result.riskLevel === 'safe' ? '120 100 50' : result.riskLevel === 'suspicious' ? '40 100 50' : '0 100 50'}
@@ -255,11 +256,11 @@ export default function Home() {
             </Card>
             </BorderGlow>
           </div>
-        )}
+          )}
 
-        {/* History Section */}
-        {isAuthenticated && (
-          <div className="max-w-2xl mx-auto">
+          {/* History Section */}
+          {isAuthenticated && (
+            <div className="max-w-2xl mx-auto">
             <Button
               variant="outline"
               onClick={() => setShowHistory(!showHistory)}
@@ -302,9 +303,10 @@ export default function Home() {
                 </div>
               </Card>
             )}
-          </div>
-        )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+      </div>
   );
 }
