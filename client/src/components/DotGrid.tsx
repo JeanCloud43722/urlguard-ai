@@ -174,15 +174,24 @@ const DotGrid = ({
   useEffect(() => {
     buildGrid();
     let ro: ResizeObserver | null = null;
+    let resizeTimeout: NodeJS.Timeout | null = null;
+    
     if (typeof window !== 'undefined') {
       if ('ResizeObserver' in window) {
-        ro = new ResizeObserver(buildGrid);
+        const debouncedBuildGrid = () => {
+          if (resizeTimeout) clearTimeout(resizeTimeout);
+          resizeTimeout = setTimeout(() => {
+            buildGrid();
+          }, 100);
+        };
+        ro = new ResizeObserver(debouncedBuildGrid);
         wrapperRef.current && ro.observe(wrapperRef.current);
       } else {
         (window as any).addEventListener('resize', buildGrid as EventListener);
       }
     }
     return () => {
+      if (resizeTimeout) clearTimeout(resizeTimeout);
       if (ro) ro.disconnect();
       else if (typeof window !== 'undefined') (window as any).removeEventListener('resize', buildGrid as EventListener);
     };
