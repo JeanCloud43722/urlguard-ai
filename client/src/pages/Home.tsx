@@ -10,6 +10,7 @@ import { getLoginUrl } from "@/const";
 import BorderGlow from "@/components/BorderGlow";
 import DotGrid from "@/components/DotGrid";
 import StarBorder from "@/components/StarBorder";
+import ResultModal from '@/components/ResultModal';
 
 interface CheckResult {
   id: number;
@@ -29,6 +30,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -50,6 +52,7 @@ export default function Home() {
       const res = await checkURLMutation.mutateAsync({ url: urlInput });
       setResult(res as CheckResult);
       setUrlInput("");
+      setShowResultModal(true);
       toast.success("URL analyzed successfully");
     } catch (error) {
       toast.error((error as Error).message);
