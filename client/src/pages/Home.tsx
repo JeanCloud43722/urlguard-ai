@@ -143,15 +143,15 @@ export default function Home() {
             )}
           </div>
         </div>
-        {/* BorderGlow Bottom Border */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 z-40 w-full">
+        {/* BorderGlow Bottom Border - Optimized */}
+        <div className="absolute bottom-0 left-0 right-0 h-1.5 z-40 w-full bg-gradient-to-r from-transparent via-blue-500/50 to-transparent">
           <BorderGlow 
             glowColor="210 100 50" 
             borderRadius={0} 
-            glowIntensity={1.5} 
-            edgeSensitivity={40}
+            glowIntensity={0.8} 
+            edgeSensitivity={50}
             backgroundColor="#060010"
-            animated={true}
+            animated={false}
           >
             <div className="w-full h-full" />
           </BorderGlow>
@@ -319,28 +319,60 @@ export default function Home() {
                   {historyQuery.data.length === 0 ? (
                     <p className="text-sm text-slate-400">No checks yet</p>
                   ) : (
-                    historyQuery.data.map((check) => (
+                    historyQuery.data.map((check) => {
+                      const phishingReasons = check.phishingReasons ? JSON.parse(check.phishingReasons) : [];
+                      const deepseekAnalysis = check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis) : null;
+                      const affiliateInfo = check.affiliateInfo ? JSON.parse(check.affiliateInfo) : null;
+                      
+                      return (
                       <div
                         key={check.id}
-                        className="flex items-center justify-between p-3 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10"
+                        className="p-4 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 space-y-3"
                       >
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-mono text-slate-200 truncate">{check.url}</p>
-                          <p className="text-xs text-slate-400">
-                            {new Date(check.createdAt).toLocaleDateString()}
-                          </p>
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-mono text-slate-200 break-all">{check.url}</p>
+                            <p className="text-xs text-slate-400 mt-1">
+                              {new Date(check.createdAt).toLocaleDateString()} at {new Date(check.createdAt).toLocaleTimeString()}
+                            </p>
+                          </div>
+                          <div className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                            check.riskLevel === "safe"
+                              ? "bg-green-500/20 text-green-300 border border-green-500/30"
+                              : check.riskLevel === "suspicious"
+                                ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                                : "bg-red-500/20 text-red-300 border border-red-500/30"
+                          }`}>
+                            {check.riskScore}%
+                          </div>
                         </div>
-                        <div className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
-                          check.riskLevel === "safe"
-                            ? "bg-green-500/20 text-green-300 border border-green-500/30"
-                            : check.riskLevel === "suspicious"
-                              ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
-                              : "bg-red-500/20 text-red-300 border border-red-500/30"
-                        }`}>
-                          {check.riskScore}%
-                        </div>
+                        {(check as any).normalizedUrl && (check as any).normalizedUrl !== check.url && (
+                          <div>
+                            <p className="text-xs text-slate-400 font-semibold">Normalized:</p>
+                            <p className="text-xs text-slate-300 font-mono break-all">{(check as any).normalizedUrl}</p>
+                          </div>
+                        )}
+                        {phishingReasons.length > 0 && (
+                          <div>
+                            <p className="text-xs text-slate-400 font-semibold">Indicators:</p>
+                            <div className="flex flex-wrap gap-2 mt-1">
+                              {phishingReasons.map((reason: string, idx: number) => (
+                                <span key={idx} className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded border border-red-500/30">
+                                  {reason}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        {(check as any).screenshotUrl && (
+                          <div className="flex items-center gap-2 text-xs text-slate-300">
+                            <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+                            Screenshot available
+                          </div>
+                        )}
                       </div>
-                    ))
+                    );
+                    })
                   )}
                 </div>
               </Card>

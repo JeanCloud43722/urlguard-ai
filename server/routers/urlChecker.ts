@@ -123,12 +123,32 @@ export const urlCheckerRouter = router({
       return checks.map((check) => ({
         id: check.id,
         url: check.url,
+        normalizedUrl: check.normalizedUrl,
         riskScore: check.riskScore,
         riskLevel: check.riskLevel,
         createdAt: check.createdAt,
+        updatedAt: check.updatedAt,
+        phishingReasons: JSON.parse(check.phishingReasons || "[]"),
         indicators: JSON.parse(check.phishingReasons || "[]"),
+        deepseekAnalysis: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis) : null,
+        affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo) : null,
+        screenshotUrl: check.screenshotUrl,
+        screenshotKey: check.screenshotKey,
       }));
     }),
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   startBatchCheck: protectedProcedure
     .input(z.object({ urls: z.array(z.string()).min(1).max(50) }))
