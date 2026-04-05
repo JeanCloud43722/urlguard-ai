@@ -91,17 +91,17 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark">
       {/* Header */}
-      <div className="border-b border-slate-200/50 bg-white/80 backdrop-blur-sm sticky top-0 z-50">
+      <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Shield className="w-8 h-8 text-blue-600" />
-            <h1 className="text-2xl font-bold text-slate-900">URLGuard AI</h1>
+            <Shield className="w-8 h-8 text-blue-400" />
+            <h1 className="text-2xl font-bold text-slate-100">URLGuard AI</h1>
           </div>
           {isAuthenticated ? (
             <div className="flex items-center gap-4">
-              <span className="text-sm text-slate-600">{user?.name}</span>
+              <span className="text-sm text-slate-300">{user?.name}</span>
               <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/batch")}>
                 Batch Check
               </Button>
@@ -124,21 +124,21 @@ export default function Home() {
       <div className="container mx-auto px-4 py-12">
         {/* Hero Section */}
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+          <h2 className="text-4xl md:text-5xl font-bold text-slate-100 mb-4">
             Phishing Detection Made Simple
           </h2>
-          <p className="text-lg text-slate-600 max-w-2xl mx-auto">
+          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
             Analyze URLs in real-time with AI-powered phishing detection. Protect yourself from malicious links.
           </p>
         </div>
 
         {/* URL Checker Card */}
         <div className="max-w-2xl mx-auto mb-12">
-          <BorderGlow glowColor="#3b82f6" glowIntensity="medium" borderRadius="12px">
-            <Card className="p-8 shadow-lg border-0 bg-white">
+          <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010">
+            <Card className="p-8 shadow-lg border-0 bg-slate-800 text-slate-100">
             <form onSubmit={handleCheckURL} className="space-y-4">
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Enter URL to Check</label>
+                <label className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
                 <div className="flex gap-2">
                   <Input
                     type="text"
