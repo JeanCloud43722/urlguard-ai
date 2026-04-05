@@ -7,7 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Shield, AlertTriangle, CheckCircle2, Link2, History } from "lucide-react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
-import { BorderGlow } from "@/components/BorderGlow";
+import BorderGlow from "@/components/BorderGlow";
 
 interface CheckResult {
   id: number;

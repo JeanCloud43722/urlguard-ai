@@ -1,4 +1,60 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useCallback, useEffect } from 'react';
+import './BorderGlow.css';
+
+function parseHSL(hslStr: string) {
+  const match = hslStr.match(/([\d.]+)\s*([\d.]+)%?\s*([\d.]+)%?/);
+  if (!match) return { h: 40, s: 80, l: 80 };
+  return { h: parseFloat(match[1]), s: parseFloat(match[2]), l: parseFloat(match[3]) };
+}
+
+function buildGlowVars(glowColor: string, intensity: number) {
+  const { h, s, l } = parseHSL(glowColor);
+  const base = `${h}deg ${s}% ${l}%`;
+  const opacities = [100, 60, 50, 40, 30, 20, 10];
+  const keys = ['', '-60', '-50', '-40', '-30', '-20', '-10'];
+  const vars: Record<string, string> = {};
+  for (let i = 0; i < opacities.length; i++) {
+    vars[`--glow-color${keys[i]}`] = `hsl(${base} / ${Math.min(opacities[i] * intensity, 100)}%)`;
+  }
+  return vars;
+}
+
+const GRADIENT_POSITIONS = ['80% 55%', '69% 34%', '8% 6%', '41% 38%', '86% 85%', '82% 18%', '51% 4%'];
+const GRADIENT_KEYS = ['--gradient-one', '--gradient-two', '--gradient-three', '--gradient-four', '--gradient-five', '--gradient-six', '--gradient-seven'];
+const COLOR_MAP = [0, 1, 2, 0, 1, 2, 1];
+
+function buildGradientVars(colors: string[]) {
+  const vars: Record<string, string> = {};
+  for (let i = 0; i < 7; i++) {
+    const c = colors[Math.min(COLOR_MAP[i], colors.length - 1)];
+    vars[GRADIENT_KEYS[i]] = `radial-gradient(at ${GRADIENT_POSITIONS[i]}, ${c} 0px, transparent 50%)`;
+  }
+  vars['--gradient-base'] = `linear-gradient(${colors[0]} 0 100%)`;
+  return vars;
+}
+
+function easeOutCubic(x: number) { return 1 - Math.pow(1 - x, 3); }
+function easeInCubic(x: number) { return x * x * x; }
+
+function animateValue({ start = 0, end = 100, duration = 1000, delay = 0, ease = easeOutCubic, onUpdate, onEnd }: {
+  start?: number;
+  end?: number;
+  duration?: number;
+  delay?: number;
+  ease?: (x: number) => number;
+  onUpdate: (value: number) => void;
+  onEnd?: () => void;
+}) {
+  const t0 = performance.now() + delay;
+  function tick() {
+    const elapsed = performance.now() - t0;
+    const t = Math.min(elapsed / duration, 1);
+    onUpdate(start + (end - start) * ease(t));
+    if (t < 1) requestAnimationFrame(tick);
+    else if (onEnd) onEnd();
+  }
+  setTimeout(() => requestAnimationFrame(tick), delay);
+}
 
 export interface BorderGlowProps {
   children: React.ReactNode;
@@ -12,13 +68,10 @@ export interface BorderGlowProps {
   coneSpread?: number;
   animated?: boolean;
   colors?: string[];
+  fillOpacity?: number;
 }
 
-/**
- * BorderGlow Component - Exact implementation from reactbits.dev
- * Glow effect follows cursor when hovering near card edges
- */
-export const BorderGlow: React.FC<BorderGlowProps> = ({
+const BorderGlow = ({
   children,
   className = '',
   edgeSensitivity = 30,
@@ -30,108 +83,93 @@ export const BorderGlow: React.FC<BorderGlowProps> = ({
   coneSpread = 25,
   animated = false,
   colors = ['#c084fc', '#f472b6', '#38bdf8'],
-}) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-  const [isNearEdge, setIsNearEdge] = useState(false);
+  fillOpacity = 0.5,
+}: BorderGlowProps) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  const getCenterOfElement = useCallback((el: HTMLElement) => {
+    const { width, height } = el.getBoundingClientRect();
+    return [width / 2, height / 2];
+  }, []);
+
+  const getEdgeProximity = useCallback((el: HTMLElement, x: number, y: number) => {
+    const [cx, cy] = getCenterOfElement(el);
+    const dx = x - cx;
+    const dy = y - cy;
+    let kx = Infinity;
+    let ky = Infinity;
+    if (dx !== 0) kx = cx / Math.abs(dx);
+    if (dy !== 0) ky = cy / Math.abs(dy);
+    return Math.min(Math.max(1 / Math.min(kx, ky), 0), 1);
+  }, [getCenterOfElement]);
+
+  const getCursorAngle = useCallback((el: HTMLElement, x: number, y: number) => {
+    const [cx, cy] = getCenterOfElement(el);
+    const dx = x - cx;
+    const dy = y - cy;
+    if (dx === 0 && dy === 0) return 0;
+    const radians = Math.atan2(dy, dx);
+    let degrees = radians * (180 / Math.PI) + 90;
+    if (degrees < 0) degrees += 360;
+    return degrees;
+  }, [getCenterOfElement]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
+    const card = cardRef.current;
+    if (!card) return;
+
+    const rect = card.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    const edge = getEdgeProximity(card, x, y);
+    const angle = getCursorAngle(card, x, y);
+
+    card.style.setProperty('--edge-proximity', `${(edge * 100).toFixed(3)}`);
+    card.style.setProperty('--cursor-angle', `${angle.toFixed(3)}deg`);
+  }, [getEdgeProximity, getCursorAngle]);
 
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    if (!animated || !cardRef.current) return;
+    const card = cardRef.current;
+    const angleStart = 110;
+    const angleEnd = 465;
+    card.classList.add('sweep-active');
+    card.style.setProperty('--cursor-angle', `${angleStart}deg`);
 
-    const handleMouseMove = (e: MouseEvent) => {
-      const rect = container.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const y = e.clientY - rect.top;
+    animateValue({ duration: 500, onUpdate: v => card.style.setProperty('--edge-proximity', `${v}`) });
+    animateValue({ ease: easeInCubic, duration: 1500, end: 50, onUpdate: v => {
+      card.style.setProperty('--cursor-angle', `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`);
+    }});
+    animateValue({ ease: easeOutCubic, delay: 1500, duration: 2250, start: 50, end: 100, onUpdate: v => {
+      card.style.setProperty('--cursor-angle', `${(angleEnd - angleStart) * (v / 100) + angleStart}deg`);
+    }});
+    animateValue({ ease: easeInCubic, delay: 2500, duration: 1500, start: 100, end: 0,
+      onUpdate: v => card.style.setProperty('--edge-proximity', `${v}`),
+      onEnd: () => card.classList.remove('sweep-active'),
+    });
+  }, [animated]);
 
-      setMousePos({ x, y });
-
-      // Check if cursor is near edge
-      const distToTop = y;
-      const distToBottom = rect.height - y;
-      const distToLeft = x;
-      const distToRight = rect.width - x;
-
-      const minDist = Math.min(distToTop, distToBottom, distToLeft, distToRight);
-      const threshold = (edgeSensitivity / 100) * Math.min(rect.width, rect.height);
-
-      setIsNearEdge(minDist < threshold);
-    };
-
-    const handleMouseLeave = () => {
-      setIsNearEdge(false);
-    };
-
-    container.addEventListener('mousemove', handleMouseMove);
-    container.addEventListener('mouseleave', handleMouseLeave);
-
-    return () => {
-      container.removeEventListener('mousemove', handleMouseMove);
-      container.removeEventListener('mouseleave', handleMouseLeave);
-    };
-  }, [edgeSensitivity]);
-
-  const gradientStops = colors
-    .map((color, i) => `${color} ${(i / (colors.length - 1)) * 100}%`)
-    .join(', ');
+  const glowVars = buildGlowVars(glowColor, glowIntensity);
 
   return (
     <div
-      ref={containerRef}
-      className={`relative overflow-hidden ${className}`}
+      ref={cardRef}
+      onPointerMove={handlePointerMove}
+      className={`border-glow-card ${className}`}
       style={{
-        backgroundColor,
-        borderRadius: `${borderRadius}px`,
-      }}
+        '--card-bg': backgroundColor,
+        '--edge-sensitivity': edgeSensitivity,
+        '--border-radius': `${borderRadius}px`,
+        '--glow-padding': `${glowRadius}px`,
+        '--cone-spread': coneSpread,
+        '--fill-opacity': fillOpacity,
+        ...glowVars,
+        ...buildGradientVars(colors),
+      } as React.CSSProperties & Record<string, any>}
     >
-      <style>{`
-        @keyframes borderGlowSweep {
-          0% {
-            opacity: 0;
-            transform: translateX(-100%);
-          }
-          50% {
-            opacity: ${glowIntensity};
-          }
-          100% {
-            opacity: 0;
-            transform: translateX(100%);
-          }
-        }
-      `}</style>
-
-      {/* Glow effect layer */}
-      {isNearEdge && (
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            borderRadius: `${borderRadius}px`,
-            pointerEvents: 'none',
-            background: `radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, hsl(${glowColor}) 0%, transparent ${glowRadius}px)`,
-            opacity: glowIntensity,
-            mixBlendMode: 'screen',
-          }}
-        />
-      )}
-
-      {/* Border gradient */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: `${borderRadius}px`,
-          padding: '2px',
-          background: `linear-gradient(90deg, ${gradientStops})`,
-          pointerEvents: 'none',
-          opacity: 0.3,
-          WebkitMaskImage: `radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent ${glowRadius * 1.5}px)`,
-          maskImage: `radial-gradient(circle at ${mousePos.x}px ${mousePos.y}px, black 0%, transparent ${glowRadius * 1.5}px)`,
-        }}
-      />
-
-      {/* Content */}
-      <div style={{ position: 'relative', borderRadius: `${borderRadius}px` }}>
+      <span className="edge-light" />
+      <div className="border-glow-inner">
         {children}
       </div>
     </div>
