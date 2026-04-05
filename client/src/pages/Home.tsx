@@ -140,24 +140,30 @@ export default function Home() {
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
                 <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    placeholder="https://example.com"
-                    value={urlInput}
-                    onChange={(e) => setUrlInput(e.target.value)}
-                    disabled={isLoading}
-                    className="flex-1"
-                  />
-                  <Button type="submit" disabled={isLoading} className="px-8">
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Analyzing...
-                      </>
-                    ) : (
-                      "Check"
-                    )}
-                  </Button>
+                  <div className="flex-1">
+                    <BorderGlow glowColor="210 100 50" borderRadius={8} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
+                      <Input
+                        type="text"
+                        placeholder="https://example.com"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        disabled={isLoading}
+                        className="flex-1 rounded-lg"
+                      />
+                    </BorderGlow>
+                  </div>
+                  <BorderGlow glowColor="210 100 50" borderRadius={8} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
+                    <Button type="submit" disabled={isLoading} className="px-8 rounded-lg">
+                      {isLoading ? (
+                        <>
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                          Analyzing...
+                        </>
+                      ) : (
+                        "Check"
+                      )}
+                    </Button>
+                  </BorderGlow>
                 </div>
               </div>
             </form>
