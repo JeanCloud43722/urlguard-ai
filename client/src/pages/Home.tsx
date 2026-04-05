@@ -7,6 +7,7 @@ import { Card } from "@/components/ui/card";
 import { Loader2, Shield, AlertTriangle, CheckCircle2, Link2, History } from "lucide-react";
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
+import { BorderGlow } from "@/components/BorderGlow";
 
 interface CheckResult {
   id: number;
@@ -133,7 +134,8 @@ export default function Home() {
 
         {/* URL Checker Card */}
         <div className="max-w-2xl mx-auto mb-12">
-          <Card className="p-8 shadow-lg border-0">
+          <BorderGlow glowColor="#3b82f6" glowIntensity="medium" borderRadius="12px">
+            <Card className="p-8 shadow-lg border-0 bg-white">
             <form onSubmit={handleCheckURL} className="space-y-4">
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Enter URL to Check</label>
@@ -159,7 +161,8 @@ export default function Home() {
                 </div>
               </div>
             </form>
-          </Card>
+            </Card>
+          </BorderGlow>
         </div>
 
         {/* Results Section */}
