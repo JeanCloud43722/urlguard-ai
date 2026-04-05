@@ -175,13 +175,13 @@ export default function Home() {
         </div>
 
           {/* URL Checker Card */}
-          <div className="url-checker-container mb-12">
+          <div className="max-w-2xl mx-auto mb-12">
             <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
-              <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
-                <form onSubmit={handleCheckURL} className="space-y-4">
-                  <div className="space-y-2">
-                    <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100 mb-4">Enter URL to Check</label>
-                    <div className="pill-search-container">
+              <Card className="p-8 shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
+                <form onSubmit={handleCheckURL} className="space-y-6">
+                  <div className="space-y-4">
+                    <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100">Enter URL to Check</label>
+                    <div className="flex flex-col gap-4">
                       <input
                         id="url-input"
                         type="url"
@@ -189,27 +189,29 @@ export default function Home() {
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                         disabled={isLoading}
-                        className="pill-input text-center"
+                        className="w-full px-6 py-3 rounded-full bg-slate-800/50 border border-blue-500/30 text-slate-100 placeholder-slate-500 text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
                         autoComplete="url"
                         spellCheck="false"
                         aria-label="Search input field"
                       />
-                      <StarBorder
-                        as="button"
-                        type="submit"
-                        disabled={isLoading}
-                        color="#3b82f6"
-                        speed="6s"
-                        thickness={2}
-                        className="pill-button-star"
-                        aria-label="Check URL for phishing"
-                      >
-                        {isLoading ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          "CHECK"
-                        )}
-                      </StarBorder>
+                      <div className="flex justify-center">
+                        <StarBorder
+                          as="button"
+                          type="submit"
+                          disabled={isLoading}
+                          color="#3b82f6"
+                          speed="6s"
+                          thickness={2}
+                          className="px-12 py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 transition-all shadow-lg"
+                          aria-label="Check URL for phishing"
+                        >
+                          {isLoading ? (
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                          ) : (
+                            "CHECK"
+                          )}
+                        </StarBorder>
+                      </div>
                     </div>
                   </div>
                 </form>
@@ -247,7 +249,7 @@ export default function Home() {
 
           {/* Results Section */}
           {result && (
-          <div className="max-w-2xl mx-auto mb-12">
+            <div className="max-w-2xl mx-auto mb-12">
             <BorderGlow 
               glowColor={result.riskLevel === 'safe' ? '120 100 50' : result.riskLevel === 'suspicious' ? '40 100 50' : '0 100 50'}
               borderRadius={28}
@@ -255,7 +257,7 @@ export default function Home() {
               edgeSensitivity={30}
               backgroundColor="#060010"
             >
-              <Card className={`p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100`}>
+              <Card className="max-w-2xl mx-auto p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
               <div className="flex items-start gap-6 mb-6">
                 <div className="flex-shrink-0">{getRiskIcon(result.riskLevel)}</div>
                 <div className="flex-1">
