@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Loader2, Shield, AlertTriangle, CheckCircle2, Link2, History } from "lu
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import BorderGlow from "@/components/BorderGlow";
+import DotGrid from "@/components/DotGrid";
 
 interface CheckResult {
   id: number;
@@ -27,6 +28,11 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<CheckResult | null>(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const checkURLMutation = trpc.urlChecker.checkURL.useMutation();
   const historyQuery = trpc.urlChecker.getHistory.useQuery({ limit: 10 }, { enabled: showHistory && isAuthenticated });
@@ -91,9 +97,25 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen w-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark">
+    <div className="min-h-screen w-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative">
+      {/* DotGrid Background */}
+      {mounted && (
+        <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
+          <DotGrid
+            dotSize={5}
+            gap={15}
+            baseColor="#1e293b"
+            activeColor="#3b82f6"
+            proximity={120}
+            shockRadius={250}
+            shockStrength={5}
+            resistance={750}
+            returnDuration={1.5}
+          />
+        </div>
+      )}
       {/* Header */}
-      <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50">
+      <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50 relative">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Shield className="w-8 h-8 text-blue-400" />
@@ -121,7 +143,7 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="w-full px-4 py-12">
+      <div className="w-full px-4 py-12 relative z-10">
         <div className="max-w-6xl mx-auto">
         {/* Hero Section */}
         <div className="text-center mb-12">
