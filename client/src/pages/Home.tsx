@@ -192,7 +192,7 @@ export default function Home() {
           {/* URL Checker Card */}
           <div className="max-w-2xl mx-auto mb-12">
             <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true}>
-              <Card className="p-8 shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
+              <Card className="p-8 shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
                 <form onSubmit={handleCheckURL} className="space-y-6">
                   <div className="space-y-4">
                     <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100">Enter URL to Check</label>
@@ -245,7 +245,7 @@ export default function Home() {
               backgroundColor="#060010"
               animated={true}
             >
-              <Card className="p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl">
+              <Card className="p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl rounded-[28px]">
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <div className="h-8 bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg animate-pulse" />
@@ -272,7 +272,7 @@ export default function Home() {
               edgeSensitivity={40}
               backgroundColor="#060010"
             >
-              <Card className="max-w-2xl mx-auto p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
+              <Card className="max-w-2xl mx-auto p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
               <div className="flex items-start gap-6 mb-6">
                 <div className="flex-shrink-0">{getRiskIcon(result.riskLevel)}</div>
                 <div className="flex-1">
