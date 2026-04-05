@@ -346,3 +346,196 @@ button.relative.rounded-\[999px\].bg-\[\#1a1a19\].text-\[\#ffffff\].text-\[13px\
     transform: none;
   }
 }
+
+
+/* ========================================
+   Modern Pill-Style Search Bar
+   Purple glow border with glassmorphism
+   ======================================== */
+
+:root {
+  --primary-color: #7c3aed;
+  --primary-light: #8b5cf6;
+  --border-color: rgba(120, 80, 220, 0.3);
+  --glow-color: rgba(120, 80, 220, 0.4);
+  --bg-gradient-start: #f5f5f7;
+  --bg-gradient-end: #ffffff;
+  --text-color: #1a1a2e;
+  --placeholder-color: #6b7280;
+}
+
+.pill-search-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 8px;
+  box-sizing: border-box;
+  background: linear-gradient(135deg, rgba(245, 245, 247, 0.05) 0%, rgba(255, 255, 255, 0.08) 100%);
+  border: 2px solid var(--border-color);
+  border-radius: 9999px;
+  box-shadow: 0 0 20px var(--glow-color), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.pill-search-container:hover {
+  border-color: rgba(120, 80, 220, 0.6);
+  box-shadow: 0 0 24px rgba(120, 80, 220, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+}
+
+.pill-search-container:focus-within {
+  border-color: rgba(120, 80, 220, 0.8);
+  box-shadow: 0 0 28px rgba(120, 80, 220, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.pill-input {
+  flex: 1 1 auto;
+  min-width: 200px;
+  background: transparent;
+  border: none;
+  padding: clamp(12px, 2vw, 16px) clamp(16px, 3vw, 24px);
+  font-size: clamp(14px, 1.5vw, 16px);
+  color: #ffffff;
+  outline: none;
+  font-family: inherit;
+  width: 100%;
+}
+
+.pill-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.pill-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.pill-button {
+  flex: 0 0 auto;
+  background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 100%);
+  color: #ffffff;
+  border: none;
+  padding: clamp(12px, 2vw, 16px) clamp(12px, 2vw, 24px);
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+}
+
+.pill-button:hover:not(:disabled) {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.4);
+}
+
+.pill-button:active:not(:disabled) {
+  transform: scale(0.98);
+}
+
+.pill-button:focus-visible {
+  outline: 2px solid rgba(120, 80, 220, 0.8);
+  outline-offset: 2px;
+}
+
+.pill-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Responsive adjustments */
+@media (max-width: 640px) {
+  .pill-search-container {
+    padding: 12px 16px;
+    gap: 8px;
+  }
+
+  .pill-input {
+    font-size: 16px;
+    padding: 12px 16px;
+  }
+
+  .pill-button {
+    padding: 12px 16px;
+    min-width: 44px;
+    min-height: 44px;
+  }
+}
+
+@media (min-width: 641px) {
+  .pill-search-container {
+    padding: 14px 20px;
+  }
+
+  .pill-input {
+    font-size: 16px;
+    padding: 14px 20px;
+  }
+
+  .pill-button {
+    padding: 14px 20px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .pill-search-container {
+    max-width: 800px;
+    padding: 16px 24px;
+  }
+
+  .pill-input {
+    font-size: 16px;
+    padding: 16px 24px;
+  }
+
+  .pill-button {
+    padding: 16px 24px;
+  }
+}
+
+/* Border glow pulse animation */
+@keyframes border-glow-pulse {
+  0% {
+    box-shadow: 0 0 20px var(--glow-color), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 28px rgba(120, 80, 220, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 20px var(--glow-color), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  }
+}
+
+.pill-search-container:focus-within {
+  animation: border-glow-pulse 3s ease infinite;
+}
+
+/* Accessibility - High contrast mode */
+@media (prefers-contrast: more) {
+  .pill-search-container {
+    border: 2px solid rgba(120, 80, 220, 0.6);
+  }
+
+  .pill-button {
+    border: 2px solid transparent;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .pill-search-container,
+  .pill-input,
+  .pill-button {
+    transition: none;
+    animation: none;
+  }
+
+  .pill-button:hover:not(:disabled) {
+    transform: none;
+  }
+}

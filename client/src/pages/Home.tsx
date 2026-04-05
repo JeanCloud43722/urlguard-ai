@@ -139,32 +139,34 @@ export default function Home() {
               <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-lg border-0 bg-slate-800 text-slate-100">
                 <form onSubmit={handleCheckURL} className="space-y-4">
                   <div className="space-y-2">
-                    <label className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
-                    <div className="url-form">
-                      <BorderGlow glowColor="210 100 50" borderRadius={12} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
-                        <Input
-                          type="url"
-                          placeholder="https://example.com"
-                          value={urlInput}
-                          onChange={(e) => setUrlInput(e.target.value)}
-                          disabled={isLoading}
-                          className="url-input"
-                          autoComplete="url"
-                          spellCheck="false"
-                        />
-                      </BorderGlow>
-                      <BorderGlow glowColor="210 100 50" borderRadius={12} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
-                        <Button type="submit" disabled={isLoading} className="check-button" aria-label="Check URL for phishing">
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                              Analyzing...
-                            </>
-                          ) : (
-                            "Check"
-                          )}
-                        </Button>
-                      </BorderGlow>
+                    <label htmlFor="url-input" className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
+                    <div className="pill-search-container">
+                      <input
+                        id="url-input"
+                        type="url"
+                        placeholder="https://example.com"
+                        value={urlInput}
+                        onChange={(e) => setUrlInput(e.target.value)}
+                        disabled={isLoading}
+                        className="pill-input"
+                        autoComplete="url"
+                        spellCheck="false"
+                        aria-label="Search input field"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="pill-button"
+                        aria-label="Check URL for phishing"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2.5">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                        )}
+                      </button>
                     </div>
                   </div>
                 </form>
