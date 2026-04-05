@@ -144,7 +144,7 @@ export default function Home() {
 
       {/* Main Content */}
       <div className="w-full px-4 py-12 relative z-10">
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-6xl mx-auto space-y-8">
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-100 mb-4">
@@ -158,7 +158,7 @@ export default function Home() {
           {/* URL Checker Card */}
           <div className="url-checker-container mb-12">
             <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
-              <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-lg border-0 bg-slate-800 text-slate-100">
+              <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100">
                 <form onSubmit={handleCheckURL} className="space-y-4">
                   <div className="space-y-2">
                     <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100 mb-4">Enter URL to Check</label>
@@ -205,7 +205,7 @@ export default function Home() {
               backgroundColor="#060010"
               animated={true}
             >
-              <Card className="p-8 border-0 bg-slate-800">
+              <Card className="p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl">
                 <div className="space-y-6">
                   <div className="space-y-3">
                     <div className="h-8 bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg animate-pulse" />
@@ -232,7 +232,7 @@ export default function Home() {
               edgeSensitivity={30}
               backgroundColor="#060010"
             >
-              <Card className={`p-8 border-2 ${getRiskBgColor(result.riskLevel)}`}>
+              <Card className={`p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100`}>
               <div className="flex items-start gap-6 mb-6">
                 <div className="flex-shrink-0">{getRiskIcon(result.riskLevel)}</div>
                 <div className="flex-1">
@@ -256,19 +256,19 @@ export default function Home() {
               </div>
 
               {/* URL Info */}
-              <div className="bg-white/50 rounded-lg p-4 mb-6">
-                <p className="text-xs text-slate-500 mb-1">Analyzed URL</p>
-                <p className="text-sm font-mono text-slate-700 break-all">{result.normalizedUrl}</p>
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 mb-6">
+                <p className="text-xs text-slate-400 mb-1">Analyzed URL</p>
+                <p className="text-sm font-mono text-slate-200 break-all">{result.normalizedUrl}</p>
               </div>
 
               {/* Indicators */}
               {result.indicators.length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold text-slate-700 mb-3">Detected Indicators</p>
+                  <p className="text-sm font-semibold text-slate-200 mb-3">Detected Indicators</p>
                   <div className="space-y-2">
                     {result.indicators.map((indicator, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm text-slate-600">
-                        <span className="text-slate-400 mt-1">•</span>
+                      <div key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                        <span className="text-slate-500 mt-1">•</span>
                         <span>{indicator}</span>
                       </div>
                     ))}
@@ -293,29 +293,29 @@ export default function Home() {
             </Button>
 
             {showHistory && historyQuery.data && (
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Checks</h3>
+              <Card className="p-6 border border-white/10 bg-slate-900/40 backdrop-blur-xl">
+                <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Checks</h3>
                 <div className="space-y-3">
                   {historyQuery.data.length === 0 ? (
-                    <p className="text-sm text-slate-500">No checks yet</p>
+                    <p className="text-sm text-slate-400">No checks yet</p>
                   ) : (
                     historyQuery.data.map((check) => (
                       <div
                         key={check.id}
-                        className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                        className="flex items-center justify-between p-3 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10"
                       >
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-mono text-slate-700 truncate">{check.url}</p>
-                          <p className="text-xs text-slate-500">
+                          <p className="text-sm font-mono text-slate-200 truncate">{check.url}</p>
+                          <p className="text-xs text-slate-400">
                             {new Date(check.createdAt).toLocaleDateString()}
                           </p>
                         </div>
                         <div className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
                           check.riskLevel === "safe"
-                            ? "bg-green-100 text-green-700"
+                            ? "bg-green-500/20 text-green-300 border border-green-500/30"
                             : check.riskLevel === "suspicious"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-red-100 text-red-700"
+                              ? "bg-yellow-500/20 text-yellow-300 border border-yellow-500/30"
+                              : "bg-red-500/20 text-red-300 border border-red-500/30"
                         }`}>
                           {check.riskScore}%
                         </div>
