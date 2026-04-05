@@ -8,6 +8,7 @@ import { Loader2, Shield, AlertTriangle, CheckCircle2, Link2, History } from "lu
 import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import BorderGlow from "@/components/BorderGlow";
+import Aurora from "@/components/Aurora";
 import DotGrid from "@/components/DotGrid";
 import StarBorder from "@/components/StarBorder";
 import ResultModal from '@/components/ResultModal';
@@ -103,6 +104,15 @@ export default function Home() {
 
   return (
     <div className="min-h-screen w-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative">
+      {/* Aurora Background */}
+      <div className="absolute inset-0 z-0 pointer-events-none">
+        <Aurora 
+          colorStops={['#0ea5e9', '#3b82f6', '#1e40af']}
+          amplitude={0.8}
+          blend={0.5}
+        />
+      </div>
+
       {/* DotGrid Background */}
       {mounted && (
         <div className="absolute inset-0 z-0 opacity-30 pointer-events-none">
