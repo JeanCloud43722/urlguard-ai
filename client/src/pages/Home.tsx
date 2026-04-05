@@ -139,7 +139,7 @@ export default function Home() {
               <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-lg border-0 bg-slate-800 text-slate-100">
                 <form onSubmit={handleCheckURL} className="space-y-4">
                   <div className="space-y-2">
-                    <label htmlFor="url-input" className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
+                    <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100 mb-4">Enter URL to Check</label>
                     <div className="pill-search-container">
                       <input
                         id="url-input"
