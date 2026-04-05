@@ -1,5 +1,4 @@
 import React, { CSSProperties } from 'react';
-import './BorderGlow.css';
 
 export interface BorderGlowProps {
   children: React.ReactNode;
@@ -11,11 +10,6 @@ export interface BorderGlowProps {
   animationDuration?: number;
 }
 
-/**
- * BorderGlow Component
- * Renders a container with an animated glowing border effect
- * Inspired by reactbits.dev/border-glow
- */
 export const BorderGlow: React.FC<BorderGlowProps> = ({
   children,
   className = '',
@@ -26,58 +20,42 @@ export const BorderGlow: React.FC<BorderGlowProps> = ({
   animationDuration = 3,
 }) => {
   const intensityMap = {
-    low: 0.3,
-    medium: 0.6,
-    high: 1,
+    low: '0.3',
+    medium: '0.6',
+    high: '1',
   };
 
   const glowOpacity = intensityMap[glowIntensity];
 
-  const containerStyle: CSSProperties = {
-    position: 'relative',
-    borderRadius,
-    overflow: 'hidden',
-  };
-
-  const borderStyle: CSSProperties = {
-    position: 'absolute',
-    inset: 0,
-    borderRadius,
-    padding: borderWidth,
-    background: `linear-gradient(45deg, ${glowColor}, transparent, ${glowColor})`,
-    backgroundSize: '300% 300%',
-    animation: `borderGlowAnimation ${animationDuration}s ease-in-out infinite`,
-    WebkitMaskImage:
-      'linear-gradient(to right, black, black calc(100% - 1px), transparent calc(100% - 1px)), linear-gradient(to bottom, black, black calc(100% - 1px), transparent calc(100% - 1px))',
-    WebkitMaskComposite: 'source-out',
-    maskComposite: 'exclude',
-    opacity: glowOpacity,
-    pointerEvents: 'none',
-  };
-
-  const contentStyle: CSSProperties = {
-    position: 'relative',
-    borderRadius,
-    background: 'inherit',
-  };
-
   return (
-    <div style={containerStyle} className={`border-glow-container ${className}`}>
+    <div className={`relative ${className}`} style={{ borderRadius }}>
       <style>{`
-        @keyframes borderGlowAnimation {
-          0% {
-            background-position: 0% 50%;
+        @keyframes borderGlowPulse {
+          0%, 100% {
+            box-shadow: 0 0 10px ${glowColor}80, 0 0 20px ${glowColor}40, inset 0 0 10px ${glowColor}20;
           }
           50% {
-            background-position: 100% 50%;
-          }
-          100% {
-            background-position: 0% 50%;
+            box-shadow: 0 0 20px ${glowColor}ff, 0 0 30px ${glowColor}80, inset 0 0 15px ${glowColor}40;
           }
         }
+        .border-glow-wrapper {
+          border-radius: ${borderRadius};
+          animation: borderGlowPulse ${animationDuration}s ease-in-out infinite;
+          opacity: ${glowOpacity};
+        }
       `}</style>
-      <div style={borderStyle} />
-      <div style={contentStyle}>{children}</div>
+      <div
+        className="border-glow-wrapper"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          borderRadius,
+          pointerEvents: 'none',
+        }}
+      />
+      <div style={{ position: 'relative', borderRadius }}>
+        {children}
+      </div>
     </div>
   );
 };
