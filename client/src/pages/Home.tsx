@@ -219,24 +219,22 @@ export default function Home() {
                         spellCheck="false"
                         aria-label="Search input field"
                       />
-                      <div className="flex justify-center">
-                        <StarBorder
-                          as="button"
-                          type="submit"
-                          disabled={isLoading}
-                          color="#3b82f6"
-                          speed="6s"
-                          thickness={2}
-                          className="px-12 py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 transition-all shadow-lg"
-                          aria-label="Check URL for phishing"
-                        >
-                          {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            "CHECK"
-                          )}
-                        </StarBorder>
-                      </div>
+                      <StarBorder
+                        as="button"
+                        type="submit"
+                        disabled={isLoading}
+                        color="#3b82f6"
+                        speed="6s"
+                        thickness={2}
+                        className="w-full px-6 py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 transition-all shadow-lg border border-blue-500/30 text-center"
+                        aria-label="Check URL for phishing"
+                      >
+                        {isLoading ? (
+                          <Loader2 className="w-5 h-5 animate-spin inline" />
+                        ) : (
+                          "CHECK"
+                        )}
+                      </StarBorder>
                     </div>
                   </div>
                 </form>
