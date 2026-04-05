@@ -171,6 +171,34 @@ export default function Home() {
           </BorderGlow>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="max-w-2xl mx-auto mb-12">
+            <BorderGlow 
+              glowColor="210 100 50"
+              borderRadius={28}
+              glowIntensity={1.0}
+              edgeSensitivity={30}
+              backgroundColor="#060010"
+              animated={true}
+            >
+              <Card className="p-8 border-0 bg-slate-800">
+                <div className="space-y-6">
+                  <div className="space-y-3">
+                    <div className="h-8 bg-gradient-to-r from-slate-700 to-slate-600 rounded-lg animate-pulse" />
+                    <div className="h-4 bg-gradient-to-r from-slate-700 to-slate-600 rounded w-3/4 animate-pulse" />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="h-4 bg-gradient-to-r from-slate-700 to-slate-600 rounded animate-pulse" />
+                    <div className="h-4 bg-gradient-to-r from-slate-700 to-slate-600 rounded w-5/6 animate-pulse" />
+                    <div className="h-4 bg-gradient-to-r from-slate-700 to-slate-600 rounded w-4/6 animate-pulse" />
+                  </div>
+                </div>
+              </Card>
+            </BorderGlow>
+          </div>
+        )}
+
         {/* Results Section */}
         {result && (
           <div className="max-w-2xl mx-auto mb-12">
