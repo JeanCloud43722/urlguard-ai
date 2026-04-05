@@ -134,7 +134,7 @@ export default function Home() {
 
         {/* URL Checker Card */}
         <div className="max-w-2xl mx-auto mb-12">
-          <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010">
+          <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
             <Card className="p-8 shadow-lg border-0 bg-slate-800 text-slate-100">
             <form onSubmit={handleCheckURL} className="space-y-4">
               <div className="space-y-2">
@@ -168,7 +168,14 @@ export default function Home() {
         {/* Results Section */}
         {result && (
           <div className="max-w-2xl mx-auto mb-12">
-            <Card className={`p-8 border-2 ${getRiskBgColor(result.riskLevel)}`}>
+            <BorderGlow 
+              glowColor={result.riskLevel === 'safe' ? '120 100 50' : result.riskLevel === 'suspicious' ? '40 100 50' : '0 100 50'}
+              borderRadius={28}
+              glowIntensity={1.0}
+              edgeSensitivity={30}
+              backgroundColor="#060010"
+            >
+              <Card className={`p-8 border-2 ${getRiskBgColor(result.riskLevel)}`}>
               <div className="flex items-start gap-6 mb-6">
                 <div className="flex-shrink-0">{getRiskIcon(result.riskLevel)}</div>
                 <div className="flex-1">
@@ -212,6 +219,7 @@ export default function Home() {
                 </div>
               )}
             </Card>
+            </BorderGlow>
           </div>
         )}
 
