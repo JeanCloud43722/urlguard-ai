@@ -119,46 +119,42 @@ export default function Home() {
         </div>
       )}
       {/* Header */}
-      <div className="sticky top-0 z-50 relative">
-        <div className="border-b border-slate-700/50 bg-slate-900/80 backdrop-blur-sm relative">
-          <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Shield className="w-8 h-8 text-blue-400" />
-              <h1 className="text-2xl font-bold text-slate-100">URLGuard AI</h1>
-            </div>
-            {isAuthenticated ? (
-              <div className="flex items-center gap-4">
-                <span className="text-sm text-slate-300">{user?.name}</span>
-                <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/batch")}>
-                  Batch Check
-                </Button>
-                <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/export")}>
-                  Export
-                </Button>
-                <Button variant="outline" size="sm">
-                  Sign Out
-                </Button>
+      <div className="sticky top-0 z-50 w-full">
+        <BorderGlow 
+          glowColor="210 100 50" 
+          borderRadius={0} 
+          glowIntensity={1.2} 
+          edgeSensitivity={40}
+          backgroundColor="#060010"
+          animated={true}
+        >
+          <div className="bg-slate-900/90 backdrop-blur-md border-b border-white/10">
+            <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Shield className="w-8 h-8 text-blue-400" />
+                <h1 className="text-2xl font-bold text-slate-100">URLGuard AI</h1>
               </div>
-            ) : (
-              <Button size="sm" onClick={() => (window.location.href = getLoginUrl())}>
-                Sign In
-              </Button>
-            )}
+              {isAuthenticated ? (
+                <div className="flex items-center gap-4">
+                  <span className="text-sm text-slate-300">{user?.name}</span>
+                  <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/batch")}>
+                    Batch Check
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/export")}>
+                    Export
+                  </Button>
+                  <Button variant="outline" size="sm">
+                    Sign Out
+                  </Button>
+                </div>
+              ) : (
+                <Button size="sm" onClick={() => (window.location.href = getLoginUrl())}>
+                  Sign In
+                </Button>
+              )}
+            </div>
           </div>
-        </div>
-        {/* BorderGlow Bottom Border */}
-        <div className="absolute bottom-0 left-0 right-0 h-1 z-40 w-full">
-          <BorderGlow 
-            glowColor="210 100 50" 
-            borderRadius={0} 
-            glowIntensity={1.2} 
-            edgeSensitivity={40}
-            backgroundColor="#060010"
-            animated={true}
-          >
-            <div className="w-full h-full" />
-          </BorderGlow>
-        </div>
+        </BorderGlow>
       </div>
 
       {/* Main Content */}
