@@ -333,7 +333,7 @@ export default function Home() {
             </Button>
 
             {showHistory && historyQuery.data && (
-              <Card className="p-6 border border-white/10 bg-slate-900/40 backdrop-blur-xl">
+              <Card className="p-6 border border-white/10 bg-slate-900/40 backdrop-blur-xl max-h-96 overflow-y-auto">
                 <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Checks</h3>
                 <div className="space-y-3">
                   {historyQuery.data.length === 0 ? (
