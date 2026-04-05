@@ -103,7 +103,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen w-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative">
+    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative">
       {/* Aurora Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Aurora 
@@ -169,7 +169,7 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="w-full px-4 py-12 relative z-10">
+      <div className="w-full px-4 py-12 relative z-10 overflow-y-auto" style={{maxHeight: 'calc(100vh - 80px)'}}>
         <div className="max-w-6xl mx-auto space-y-8">
         {/* Hero Section */}
         <div className="text-center mb-12">
