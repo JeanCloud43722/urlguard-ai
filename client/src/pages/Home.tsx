@@ -134,43 +134,43 @@ export default function Home() {
         </div>
 
           {/* URL Checker Card */}
-          <div className="max-w-2xl mx-auto mb-12">
-          <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
-            <Card className="p-8 shadow-lg border-0 bg-slate-800 text-slate-100">
-            <form onSubmit={handleCheckURL} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
-                <div className="flex gap-2">
-                  <div className="flex-1">
-                    <BorderGlow glowColor="210 100 50" borderRadius={8} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
-                      <Input
-                        type="text"
-                        placeholder="https://example.com"
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        disabled={isLoading}
-                        className="flex-1 rounded-lg"
-                      />
-                    </BorderGlow>
+          <div className="url-checker-container mb-12">
+            <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.0} edgeSensitivity={30} backgroundColor="#060010" animated={true}>
+              <Card className="p-[clamp(1rem,5vw,2.5rem)] shadow-lg border-0 bg-slate-800 text-slate-100">
+                <form onSubmit={handleCheckURL} className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-300">Enter URL to Check</label>
+                    <div className="url-form">
+                      <BorderGlow glowColor="210 100 50" borderRadius={12} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
+                        <Input
+                          type="url"
+                          placeholder="https://example.com"
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          disabled={isLoading}
+                          className="url-input"
+                          autoComplete="url"
+                          spellCheck="false"
+                        />
+                      </BorderGlow>
+                      <BorderGlow glowColor="210 100 50" borderRadius={12} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
+                        <Button type="submit" disabled={isLoading} className="check-button" aria-label="Check URL for phishing">
+                          {isLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Analyzing...
+                            </>
+                          ) : (
+                            "Check"
+                          )}
+                        </Button>
+                      </BorderGlow>
+                    </div>
                   </div>
-                  <BorderGlow glowColor="210 100 50" borderRadius={8} glowIntensity={0.8} edgeSensitivity={30} backgroundColor="#1e293b">
-                    <Button type="submit" disabled={isLoading} className="px-8 rounded-lg">
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        "Check"
-                      )}
-                    </Button>
-                  </BorderGlow>
-                </div>
-              </div>
-            </form>
-            </Card>
-          </BorderGlow>
-        </div>
+                </form>
+              </Card>
+            </BorderGlow>
+          </div>
 
           {/* Loading State */}
           {isLoading && (

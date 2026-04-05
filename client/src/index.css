@@ -180,3 +180,169 @@
 button.relative.rounded-\[999px\].bg-\[\#1a1a19\].text-\[\#ffffff\].text-\[13px\].font-\[500\].leading-\[18px\].flex.items-center.justify-center.h-\[40px\].group.hover\:opacity-80 {
     display: none;
 }
+
+
+/* ========================================
+   Responsive URL Checker Component
+   Mobile-first approach with clamp() for fluid sizing
+   ======================================== */
+
+* {
+  box-sizing: border-box;
+}
+
+/* URL Checker Container */
+.url-checker-container {
+  width: 100%;
+  max-width: 600px;
+  margin: 0 auto;
+  padding: clamp(1rem, 5vw, 2.5rem);
+  box-sizing: border-box;
+  overflow-x: hidden;
+}
+
+/* Form Layout - Mobile first (column), then row on tablet+ */
+.url-form {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(0.75rem, 2vw, 1rem);
+  width: 100%;
+  align-items: stretch;
+}
+
+/* Input Field Styling */
+.url-input {
+  flex: 1 1 auto;
+  min-width: 200px;
+  padding: 0.875rem 1.25rem;
+  font-size: clamp(14px, 1.5vw, 16px);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  transition: all 0.2s ease;
+  min-height: 48px;
+  width: 100%;
+  font-family: inherit;
+}
+
+.url-input:focus {
+  outline: none;
+  border-color: rgba(37, 99, 235, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.url-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.url-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Check Button Styling */
+.check-button {
+  flex: 0 0 auto;
+  padding: 0.875rem 2rem;
+  font-size: clamp(14px, 1.5vw, 16px);
+  font-weight: 600;
+  background: #2563eb;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  min-height: 48px;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 120px;
+}
+
+.check-button:hover:not(:disabled) {
+  background: #1d4ed8;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+}
+
+.check-button:active:not(:disabled) {
+  transform: translateY(0);
+  background: #1e40af;
+}
+
+.check-button:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.check-button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+/* Tablet and up - Horizontal layout */
+@media (min-width: 640px) {
+  .url-form {
+    flex-direction: row;
+    align-items: stretch;
+    gap: clamp(0.75rem, 2vw, 1rem);
+  }
+
+  .url-input {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .check-button {
+    flex: 0 0 auto;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+@media (max-width: 768px) {
+  .url-input,
+  .check-button {
+    font-size: 16px;
+  }
+}
+
+/* Desktop - Maintain max-width constraint */
+@media (min-width: 1025px) {
+  .url-checker-container {
+    max-width: 600px;
+  }
+}
+
+/* Accessibility - High contrast mode support */
+@media (prefers-contrast: more) {
+  .url-input {
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .url-input:focus {
+    border-color: #2563eb;
+  }
+
+  .check-button {
+    border: 2px solid transparent;
+  }
+
+  .check-button:focus-visible {
+    border-color: #2563eb;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .url-input,
+  .check-button {
+    transition: none;
+  }
+
+  .check-button:hover:not(:disabled) {
+    transform: none;
+  }
+}
