@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { getLoginUrl } from "@/const";
 import BorderGlow from "@/components/BorderGlow";
 import DotGrid from "@/components/DotGrid";
+import StarBorder from "@/components/StarBorder";
 
 interface CheckResult {
   id: number;
@@ -175,10 +176,14 @@ export default function Home() {
                         spellCheck="false"
                         aria-label="Search input field"
                       />
-                      <button
+                      <StarBorder
+                        as="button"
                         type="submit"
                         disabled={isLoading}
-                        className="pill-button"
+                        color="#3b82f6"
+                        speed="6s"
+                        thickness={2}
+                        className="pill-button-star"
                         aria-label="Check URL for phishing"
                       >
                         {isLoading ? (
@@ -186,7 +191,7 @@ export default function Home() {
                         ) : (
                           "CHECK"
                         )}
-                      </button>
+                      </StarBorder>
                     </div>
                   </div>
                 </form>
