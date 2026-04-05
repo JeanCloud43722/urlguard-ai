@@ -175,3 +175,8 @@
     }
   }
 }
+
+/* Hide specific button element */
+button.relative.rounded-\[999px\].bg-\[\#1a1a19\].text-\[\#ffffff\].text-\[13px\].font-\[500\].leading-\[18px\].flex.items-center.justify-center.h-\[40px\].group.hover\:opacity-80 {
+    display: none;
+}
