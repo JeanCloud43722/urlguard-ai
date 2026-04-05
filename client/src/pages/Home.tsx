@@ -11,6 +11,7 @@ import BorderGlow from "@/components/BorderGlow";
 import DotGrid from "@/components/DotGrid";
 import StarBorder from "@/components/StarBorder";
 import ResultModal from '@/components/ResultModal';
+import DecryptedText from '@/components/DecryptedText';
 
 interface CheckResult {
   id: number;
@@ -163,10 +164,28 @@ export default function Home() {
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h2 className="text-4xl md:text-5xl font-bold text-slate-100 mb-4">
-            Phishing Detection Made Simple
+            <DecryptedText 
+              text="Phishing Detection Made Simple" 
+              speed={50}
+              maxIterations={15}
+              sequential={true}
+              revealDirection="center"
+              animateOn="view"
+              className="text-slate-100"
+              encryptedClassName="text-blue-400/60"
+            />
           </h2>
           <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-            Analyze URLs in real-time with AI-powered phishing detection. Protect yourself from malicious links.
+            <DecryptedText 
+              text="Analyze URLs in real-time with AI-powered phishing detection. Protect yourself from malicious links." 
+              speed={30}
+              maxIterations={20}
+              sequential={true}
+              revealDirection="start"
+              animateOn="view"
+              className="text-slate-400"
+              encryptedClassName="text-slate-500/40"
+            />
           </p>
         </div>
 
