@@ -122,6 +122,10 @@
     -webkit-text-size-adjust: 100%;
     /* Smooth scrolling */
     scroll-behavior: smooth;
+    /* Fix root overflow – prevent body scroll */
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
   }
 
   *,
@@ -140,13 +144,14 @@
 
   body {
     @apply bg-background text-foreground;
+    /* Fix root overflow – prevent body scroll */
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
     /* Prevent horizontal scroll */
     overflow-x: hidden;
-    /* Allow vertical scroll only when needed */
-    overflow-y: auto;
-    /* Ensure body fills viewport */
-    min-height: 100vh;
-    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    /* Prevent vertical scroll at body level */
+    overflow-y: hidden;
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -832,4 +837,53 @@ button.relative.rounded-\[999px\].bg-\[\#1a1a19\].text-\[\#ffffff\].text-\[13px\
 .pill-button-star:disabled .inner-content {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+/* Smooth scroll behavior with momentum feel */
+@layer base {
+  /* Momentum scrolling on iOS */
+  [data-scrollable],
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+
+  /* Haptic feedback on interactive elements */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  a[href],
+  input[type="checkbox"]:not(:disabled),
+  input[type="radio"]:not(:disabled) {
+    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1),
+                box-shadow 0.2s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+
+  /* Subtle press feedback */
+  button:not(:disabled):active,
+  [role="button"]:not([aria-disabled="true"]):active,
+  a[href]:active,
+  input[type="checkbox"]:not(:disabled):active,
+  input[type="radio"]:not(:disabled):active {
+    transform: scale(0.98);
+  }
+
+  /* Hover state with spring easing */
+  button:not(:disabled):hover,
+  [role="button"]:not([aria-disabled="true"]):hover,
+  a[href]:hover,
+  input[type="checkbox"]:not(:disabled):hover,
+  input[type="radio"]:not(:disabled):hover {
+    transform: translateY(-1px);
+  }
+}
+
+/* Haptic feedback animations */
+@keyframes scroll-feedback {
+  0% {
+    box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.4);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0);
+  }
 }

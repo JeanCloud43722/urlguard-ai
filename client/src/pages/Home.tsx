@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useHapticFeedback } from "@/hooks/useHapticFeedback";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ export default function Home() {
   const [mounted, setMounted] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(80);
   const headerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+  const { onScroll, onSubmit } = useHapticFeedback();
 
   useEffect(() => {
     setMounted(true);
@@ -63,6 +66,7 @@ export default function Home() {
 
   const handleCheckURL = async (e: React.FormEvent) => {
     e.preventDefault();
+    onSubmit(); // Trigger haptic feedback on form submission
     if (!urlInput.trim()) {
       toast.error("Please enter a URL");
       return;
@@ -122,7 +126,7 @@ export default function Home() {
   };
 
   return (
-    <div className="flex flex-col w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative overflow-hidden">
+    <div className="flex flex-col w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative overflow-hidden" style={{ height: '100dvh' }}>
       {/* Aurora Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Aurora 
@@ -188,7 +192,12 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-y-auto">
+      <div 
+        ref={contentRef}
+        className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-y-auto"
+        data-scrollable
+        onScroll={onScroll}
+      >
         <div className="max-w-fluid-lg mx-auto space-y-8 gap-clamp">
         {/* Hero Section */}
         <div className="text-center mb-clamp">

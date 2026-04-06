@@ -234,3 +234,49 @@
 - [x] Document browser compatibility
 - [x] List trade-offs and mitigations
 - [ ] Update README with responsive design guidelines
+
+
+## Phase 13: Zero Scrollbar & Momentum Scroll with Haptic Feedback
+
+### Root Layout Overflow Fix
+- [x] Diagnose vertical scrollbar root cause (body overflow-y: auto conflict)
+- [x] Set html { height: 100%; overflow: hidden; }
+- [x] Set body { height: 100%; overflow: hidden; }
+- [x] Ensure Home.tsx root uses 100dvh with overflow-hidden
+- [x] Verify content container is only scrollable element
+
+### Smooth Scroll Behavior
+- [x] Add -webkit-overflow-scrolling: touch for iOS momentum
+- [x] Add scroll-behavior: smooth for animation
+- [x] Add overscroll-behavior: contain to prevent scroll chaining
+- [x] Apply to [data-scrollable] and .overflow-y-auto elements
+- [x] Test momentum feel on iOS and Android
+
+### Haptic Feedback Implementation
+- [x] Create useHapticFeedback hook with navigator.vibrate()
+- [x] Add spring easing cubic-bezier(0.25, 1, 0.5, 1) to buttons
+- [x] Implement button press feedback: scale(0.98)
+- [x] Implement hover feedback: translateY(-1px)
+- [x] Add scroll event haptic pulse (10ms)
+- [x] Add form submission haptic pulse (20ms)
+- [x] Integrate haptic hook into Home.tsx
+- [x] Add data-scrollable attribute to content container
+
+### Validation & Testing
+- [x] Test at 320px viewport - no scrollbar
+- [x] Test at 768px viewport - no scrollbar
+- [x] Test at 1024px viewport - no scrollbar
+- [x] Test at 1440px viewport - no scrollbar
+- [x] Test at 1920px viewport - no scrollbar
+- [x] Verify smooth momentum scroll on iOS
+- [x] Verify haptic feedback on touch devices
+- [x] Verify spring easing on hover/click
+- [x] Verify no layout shift during scroll
+- [x] Verify no content clipping
+
+### Documentation
+- [x] Document scrollbar fix approach
+- [x] Document smooth scroll implementation
+- [x] Document haptic feedback strategy
+- [x] List browser compatibility (iOS 13+, Android 5+)
+- [x] Note: navigator.vibrate() only works on touch devices
