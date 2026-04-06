@@ -892,10 +892,10 @@ button.relative.rounded-\[999px\].bg-\[\#1a1a19\].text-\[\#ffffff\].text-\[13px\
 /* 7-second rotation animation for search field glow effect */
 @keyframes glow-rotate-7s {
   0% {
-    transform: rotate(0deg);
+    --cursor-angle: 0deg;
   }
   100% {
-    transform: rotate(360deg);
+    --cursor-angle: 360deg;
   }
 }
 
