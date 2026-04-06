@@ -232,7 +232,7 @@ export default function Home() {
 
           {/* URL Checker Card */}
           <div className="max-w-fluid-md mx-auto mb-clamp">
-            <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true}>
+            <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true} isLoading={isLoading}>
               <GlassCard
                 blur={12}
                 saturation={180}
