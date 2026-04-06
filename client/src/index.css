@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./responsive-utilities.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -114,11 +115,38 @@
 }
 
 @layer base {
-  * {
+  /* Global box-sizing for predictable layout */
+  html {
+    box-sizing: border-box;
+    /* Prevent zoom on iOS input focus */
+    -webkit-text-size-adjust: 100%;
+    /* Smooth scrolling */
+    scroll-behavior: smooth;
+  }
+
+  *,
+  *::before,
+  *::after {
+    box-sizing: inherit;
     @apply border-border outline-ring/50;
   }
+
+  /* Remove default margins for better control */
+  body,
+  html {
+    margin: 0;
+    padding: 0;
+  }
+
   body {
     @apply bg-background text-foreground;
+    /* Prevent horizontal scroll */
+    overflow-x: hidden;
+    /* Allow vertical scroll only when needed */
+    overflow-y: auto;
+    /* Ensure body fills viewport */
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
   }
   button:not(:disabled),
   [role="button"]:not([aria-disabled="true"]),
@@ -130,6 +158,35 @@
   input[type="checkbox"]:not(:disabled),
   input[type="radio"]:not(:disabled) {
     @apply cursor-pointer;
+  }
+
+  /* Ensure images don't overflow containers */
+  img,
+  picture,
+  video,
+  canvas,
+  svg {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Prevent form elements from breaking layout */
+  input,
+  button,
+  textarea,
+  select {
+    font: inherit;
+  }
+
+  /* Ensure inputs don't zoom on iOS */
+  input[type="text"],
+  input[type="email"],
+  input[type="url"],
+  input[type="password"],
+  input[type="number"],
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
   }
 }
 

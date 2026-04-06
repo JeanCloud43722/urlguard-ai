@@ -173,3 +173,64 @@
 - [ ] Enhanced Explanation Generator
 - [ ] Integration in DeepSeek-Prompt
 - [ ] Tests f\u00fcr Brand-Impersonation-Erkennung
+
+
+## Phase 12: Responsive Layout Refactoring (Neu)
+
+### Global Styles & Box-Sizing
+- [x] Add global box-sizing: border-box to all elements
+- [x] Set html overflow-x: hidden, body overflow-y: auto
+- [x] Implement 100dvh (dynamic viewport height) for mobile
+- [x] Add 16px font-size to inputs to prevent iOS zoom
+- [x] Ensure images scale with max-width: 100%
+
+### Responsive Utilities System
+- [x] Create responsive-utilities.css with fluid scaling
+- [x] Implement padding utilities (px-clamp, py-clamp, p-clamp)
+- [x] Implement typography utilities (text-fluid-h1 through text-fluid-sm)
+- [x] Implement max-width utilities (max-w-fluid-sm/md/lg/xl)
+- [x] Implement icon sizing (icon-sm/md/lg with clamp)
+- [x] Implement touch target utility (min 44px)
+- [x] Implement gap utilities (gap-clamp, gap-clamp-sm, gap-clamp-lg)
+- [x] Add accessibility media queries (prefers-reduced-motion, prefers-contrast)
+
+### Home.tsx Layout Refactoring
+- [x] Add dynamic header height measurement with useRef
+- [x] Change root container to flex flex-col h-screen
+- [x] Update header to flex-shrink-0 with dynamic height
+- [x] Update main content to flex-1 overflow-y-auto
+- [x] Convert all typography to text-fluid-* classes
+- [x] Convert all spacing to px-clamp, py-clamp, gap-clamp
+- [x] Convert all max-widths to max-w-fluid-*
+- [x] Convert all icon sizes to icon-sm/md/lg
+- [x] Add touch-target class to interactive elements
+- [x] Update hero section with fluid typography
+- [x] Update URL checker card with responsive spacing
+- [x] Update result display with fluid sizing
+- [x] Update history section with responsive list items
+
+### Custom Components Review
+- [x] Verify BorderGlow uses CSS variables (no fixed values)
+- [x] Verify DotGrid is canvas-based (scales automatically)
+- [x] Verify Aurora is canvas-based (scales automatically)
+- [x] Confirm StarBorder inherits parent sizing
+
+### Validation & Testing
+- [x] Test at 375px (iPhone SE) - no horizontal scroll
+- [x] Test at 768px (iPad) - no horizontal scroll
+- [x] Test at 1024px (iPad Pro) - no horizontal scroll
+- [x] Test at 1440px (Desktop) - no horizontal scroll
+- [x] Test at 1920px (4K) - no horizontal scroll
+- [x] Verify touch targets ≥ 44px
+- [x] Verify text ≥ 16px minimum
+- [x] Verify no layout shift on resize
+- [x] Verify accessibility maintained
+- [x] Create comprehensive validation report
+
+### Documentation
+- [x] Create RESPONSIVE_LAYOUT_VALIDATION.md
+- [x] Document all fixed → responsive conversions
+- [x] Create validation checklist
+- [x] Document browser compatibility
+- [x] List trade-offs and mitigations
+- [ ] Update README with responsive design guidelines

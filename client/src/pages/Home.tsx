@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -34,9 +34,28 @@ export default function Home() {
   const [showHistory, setShowHistory] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [headerHeight, setHeaderHeight] = useState(80);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  // Dynamically measure header height for responsive content calculation
+  useEffect(() => {
+    const measureHeader = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.offsetHeight;
+        setHeaderHeight(height);
+        // Set CSS variable for use in responsive utilities
+        document.documentElement.style.setProperty('--header-height', `${height}px`);
+      }
+    };
+
+    // Measure on mount and on resize
+    measureHeader();
+    window.addEventListener('resize', measureHeader);
+    return () => window.removeEventListener('resize', measureHeader);
   }, []);
 
   const checkURLMutation = trpc.urlChecker.checkURL.useMutation();
@@ -103,7 +122,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative">
+    <div className="flex flex-col w-full h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 dark relative overflow-hidden">
       {/* Aurora Background */}
       <div className="absolute inset-0 z-0 pointer-events-none">
         <Aurora 
@@ -130,7 +149,7 @@ export default function Home() {
         </div>
       )}
       {/* Header */}
-      <div className="sticky top-0 z-50 w-full">
+      <div ref={headerRef} className="sticky top-0 z-50 w-full flex-shrink-0">
         <BorderGlow 
           glowColor="210 100 50" 
           borderRadius={0} 
@@ -142,12 +161,12 @@ export default function Home() {
           <div className="bg-slate-900/90 backdrop-blur-md border-b border-white/10">
             <div className="container mx-auto px-4 py-4 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Shield className="w-8 h-8 text-blue-400" />
-                <h1 className="text-2xl font-bold text-slate-100">URLGuard AI</h1>
+                <Shield className="icon-md text-blue-400" />
+                <h1 className="text-fluid-h2 font-bold text-slate-100">URLGuard AI</h1>
               </div>
               {isAuthenticated ? (
                 <div className="flex items-center gap-4">
-                  <span className="text-sm text-slate-300">{user?.name}</span>
+                  <span className="text-fluid-sm text-slate-300">{user?.name}</span>
                   <Button variant="ghost" size="sm" onClick={() => (window.location.href = "/batch")}>
                     Batch Check
                   </Button>
@@ -169,11 +188,11 @@ export default function Home() {
       </div>
 
       {/* Main Content */}
-      <div className="w-full px-4 py-12 relative z-10 overflow-y-auto" style={{maxHeight: 'calc(100vh - 80px)'}}>
-        <div className="max-w-6xl mx-auto space-y-8">
+      <div className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-y-auto">
+        <div className="max-w-fluid-lg mx-auto space-y-8 gap-clamp">
         {/* Hero Section */}
-        <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold text-slate-100 mb-4">
+        <div className="text-center mb-clamp">
+          <h2 className="text-fluid-h1 font-bold text-slate-100 mb-4">
             <DecryptedText 
               text="Phishing Detection Made Simple" 
               speed={50}
@@ -185,7 +204,7 @@ export default function Home() {
               encryptedClassName="text-blue-400/60"
             />
           </h2>
-          <p className="text-lg text-slate-400 max-w-2xl mx-auto">
+          <p className="text-fluid-body text-slate-400 max-w-fluid-md mx-auto">
             <DecryptedText 
               text="Analyze URLs in real-time with AI-powered phishing detection. Protect yourself from malicious links." 
               speed={30}
@@ -200,13 +219,13 @@ export default function Home() {
         </div>
 
           {/* URL Checker Card */}
-          <div className="max-w-2xl mx-auto mb-12">
+          <div className="max-w-fluid-md mx-auto mb-clamp">
             <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true}>
-              <Card className="p-8 shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
+              <Card className="p-clamp shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
                 <form onSubmit={handleCheckURL} className="space-y-6">
                   <div className="space-y-4">
-                    <label htmlFor="url-input" className="text-center block text-2xl md:text-3xl font-bold text-slate-100">Enter URL to Check</label>
-                    <div className="flex flex-col gap-4">
+                    <label htmlFor="url-input" className="text-center block text-fluid-h3 font-bold text-slate-100">Enter URL to Check</label>
+                    <div className="flex flex-col gap-clamp-sm">
                       <input
                         id="url-input"
                         type="url"
@@ -214,7 +233,7 @@ export default function Home() {
                         value={urlInput}
                         onChange={(e) => setUrlInput(e.target.value)}
                         disabled={isLoading}
-                        className="w-full px-6 py-3 rounded-full bg-slate-800/50 border border-blue-500/30 text-slate-100 placeholder-slate-500 text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-clamp py-3 rounded-full bg-slate-800/50 border border-blue-500/30 text-slate-100 placeholder-slate-500 text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all touch-target"
                         autoComplete="url"
                         spellCheck="false"
                         aria-label="Search input field"
@@ -232,11 +251,11 @@ export default function Home() {
                           color="#3b82f6"
                           speed="6s"
                           thickness={2}
-                          className="w-full px-6 py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 transition-all shadow-lg border border-blue-500/30 text-center"
+                          className="w-full px-clamp py-3 rounded-full font-semibold text-white bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-700 hover:to-blue-600 disabled:opacity-50 transition-all shadow-lg border border-blue-500/30 text-center touch-target"
                           aria-label="Check URL for phishing"
                         >
                           {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin inline" />
+                            <Loader2 className="icon-sm animate-spin inline" />
                           ) : (
                             "CHECK"
                           )}
@@ -251,7 +270,7 @@ export default function Home() {
 
           {/* Loading State */}
           {isLoading && (
-          <div className="max-w-2xl mx-auto mb-12">
+          <div className="max-w-fluid-md mx-auto mb-clamp">
             <BorderGlow 
               glowColor="210 100 50"
               borderRadius={28}
@@ -279,7 +298,7 @@ export default function Home() {
 
           {/* Results Section */}
           {result && (
-            <div className="max-w-2xl mx-auto mb-12">
+            <div className="max-w-fluid-md mx-auto mb-clamp">
             <BorderGlow 
               glowColor={result.riskLevel === 'safe' ? '120 100 50' : result.riskLevel === 'suspicious' ? '40 100 50' : '0 100 50'}
               borderRadius={28}
@@ -287,42 +306,42 @@ export default function Home() {
               edgeSensitivity={40}
               backgroundColor="#060010"
             >
-              <Card className="max-w-2xl mx-auto p-8 border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
-              <div className="flex items-start gap-6 mb-6">
+              <Card className="max-w-fluid-md mx-auto p-clamp border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
+              <div className="flex items-start gap-clamp mb-clamp">
                 <div className="flex-shrink-0">{getRiskIcon(result.riskLevel)}</div>
                 <div className="flex-1">
-                  <h3 className={`text-2xl font-bold mb-2 ${getRiskColor(result.riskLevel)}`}>
+                  <h3 className={`text-fluid-h3 font-bold mb-2 ${getRiskColor(result.riskLevel)}`}>
                     {result.riskLevel.charAt(0).toUpperCase() + result.riskLevel.slice(1)}
                   </h3>
-                  <p className="text-sm text-slate-600 mb-4">{result.analysis}</p>
-                  <div className="flex items-center gap-4 mb-4">
+                  <p className="text-fluid-sm text-slate-600 mb-4">{result.analysis}</p>
+                  <div className="flex items-center gap-clamp mb-4">
                     <div>
-                      <p className="text-xs text-slate-500">Risk Score</p>
-                      <p className={`text-3xl font-bold ${getRiskColor(result.riskLevel)}`}>
+                      <p className="text-fluid-sm text-slate-500">Risk Score</p>
+                      <p className={`text-fluid-h2 font-bold ${getRiskColor(result.riskLevel)}`}>
                         {result.riskScore}%
                       </p>
                     </div>
                     <div>
-                      <p className="text-xs text-slate-500">Confidence</p>
-                      <p className="text-3xl font-bold text-blue-600">{Math.round(result.confidence * 100)}%</p>
+                      <p className="text-fluid-sm text-slate-500">Confidence</p>
+                      <p className="text-fluid-h2 font-bold text-blue-600">{Math.round(result.confidence * 100)}%</p>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* URL Info */}
-              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-4 mb-6">
-                <p className="text-xs text-slate-400 mb-1">Analyzed URL</p>
-                <p className="text-sm font-mono text-slate-200 break-all">{result.normalizedUrl}</p>
+              <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-lg p-clamp mb-clamp">
+                <p className="text-fluid-sm text-slate-400 mb-1">Analyzed URL</p>
+                <p className="text-fluid-body font-mono text-slate-200 break-all">{result.normalizedUrl}</p>
               </div>
 
               {/* Indicators */}
               {result.indicators.length > 0 && (
                 <div>
-                  <p className="text-sm font-semibold text-slate-200 mb-3">Detected Indicators</p>
+                  <p className="text-fluid-body font-semibold text-slate-200 mb-3">Detected Indicators</p>
                   <div className="space-y-2">
                     {result.indicators.map((indicator, idx) => (
-                      <div key={idx} className="flex items-start gap-2 text-sm text-slate-300">
+                      <div key={idx} className="flex items-start gap-2 text-fluid-sm text-slate-300">
                         <span className="text-slate-500 mt-1">•</span>
                         <span>{indicator}</span>
                       </div>
@@ -337,7 +356,7 @@ export default function Home() {
 
           {/* History Section */}
           {isAuthenticated && (
-            <div className="max-w-2xl mx-auto">
+            <div className="max-w-fluid-md mx-auto">
             <Button
               variant="outline"
               onClick={() => setShowHistory(!showHistory)}
@@ -348,11 +367,11 @@ export default function Home() {
             </Button>
 
             {showHistory && historyQuery.data && (
-              <Card className="p-6 border border-white/10 bg-slate-900/40 backdrop-blur-xl max-h-96 overflow-y-auto">
-                <h3 className="text-lg font-semibold text-slate-100 mb-4">Recent Checks</h3>
+              <Card className="p-clamp border border-white/10 bg-slate-900/40 backdrop-blur-xl max-h-96 overflow-y-auto">
+                <h3 className="text-fluid-body font-semibold text-slate-100 mb-4">Recent Checks</h3>
                 <div className="space-y-3">
                   {historyQuery.data.length === 0 ? (
-                    <p className="text-sm text-slate-400">No checks yet</p>
+                    <p className="text-fluid-sm text-slate-400">No checks yet</p>
                   ) : (
                     historyQuery.data.map((check) => {
                       let phishingReasons: string[] = [];
@@ -377,16 +396,16 @@ export default function Home() {
                       return (
                       <div
                         key={check.id}
-                        className="p-4 bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 space-y-3"
+                        className="p-clamp bg-white/5 backdrop-blur-sm rounded-lg border border-white/10 space-y-3"
                       >
-                        <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-start justify-between gap-clamp-sm">
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-mono text-slate-200 break-all">{check.url}</p>
-                            <p className="text-xs text-slate-400 mt-1">
+                            <p className="text-fluid-sm font-mono text-slate-200 break-all">{check.url}</p>
+                            <p className="text-fluid-sm text-slate-400 mt-1">
                               {new Date(check.createdAt).toLocaleDateString()} at {new Date(check.createdAt).toLocaleTimeString()}
                             </p>
                           </div>
-                          <div className={`flex-shrink-0 px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
+                          <div className={`flex-shrink-0 px-3 py-1 rounded-full text-fluid-sm font-semibold whitespace-nowrap ${
                             check.riskLevel === "safe"
                               ? "bg-green-500/20 text-green-300 border border-green-500/30"
                               : check.riskLevel === "suspicious"
@@ -398,8 +417,8 @@ export default function Home() {
                         </div>
                         {(check as any).normalizedUrl && (check as any).normalizedUrl !== check.url && (
                           <div>
-                            <p className="text-xs text-slate-400 font-semibold">Normalized:</p>
-                            <p className="text-xs text-slate-300 font-mono break-all">{(check as any).normalizedUrl}</p>
+                            <p className="text-fluid-sm text-slate-400 font-semibold">Normalized:</p>
+                            <p className="text-fluid-sm text-slate-300 font-mono break-all">{(check as any).normalizedUrl}</p>
                           </div>
                         )}
                         {phishingReasons.length > 0 && (
