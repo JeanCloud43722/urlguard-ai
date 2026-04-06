@@ -18,11 +18,12 @@
   /* Base styles */
   position: relative;
   border-radius: var(--glass-border-radius);
-  overflow: hidden;
+  overflow: visible;
   isolation: isolate;
   transform: translate3d(0, 0, 0.01px);
   will-change: transform;
   content-visibility: auto;
+  box-sizing: border-box;
 
   /* Glassmorphism effect */
   background: rgba(255, 255, 255, var(--glass-opacity));
@@ -84,9 +85,10 @@
 .glass-card__content {
   position: relative;
   z-index: 1;
-  padding: inherit;
+  /* Inherit padding from parent Card component */
   /* Ensure text contrast */
   color: inherit;
+  box-sizing: border-box;
 }
 
 /* Accessibility: Reduced motion support */
