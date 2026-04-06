@@ -315,6 +315,41 @@ export default function DecryptedText({
     setDirection('forward');
   }, [text]);
 
+  // Auto-loop animation for inViewHover
+  useEffect(() => {
+    if (animateOn !== 'inViewHover' || !hasAnimated) return;
+
+    let loopTimeout: NodeJS.Timeout;
+
+    const startLoop = () => {
+      // Start decryption
+      setRevealedIndices(new Set());
+      setDirection('forward');
+      setIsAnimating(true);
+
+      // Calculate animation duration based on text length and speed
+      const animationDuration = text.length * speed + 1000; // Add 1s delay
+
+      loopTimeout = setTimeout(() => {
+        // Reverse animation (re-encrypt)
+        setDirection('reverse');
+        setIsAnimating(true);
+
+        // After reverse completes, wait and start again
+        const reverseDelay = text.length * speed + 2000;
+        loopTimeout = setTimeout(() => {
+          startLoop();
+        }, reverseDelay);
+      }, animationDuration);
+    };
+
+    startLoop();
+
+    return () => {
+      if (loopTimeout) clearTimeout(loopTimeout);
+    };
+  }, [animateOn, hasAnimated, text.length, speed, text])
+
   useEffect(() => {
     if (animateOn !== 'view' && animateOn !== 'inViewHover') return;
 
@@ -358,16 +393,30 @@ export default function DecryptedText({
   }, [animateOn, text, encryptInstantly]);
 
   const animateProps =
-    animateOn === 'hover' || animateOn === 'inViewHover'
+    animateOn === 'hover'
       ? {
           onMouseEnter: triggerHoverDecrypt,
           onMouseLeave: resetToPlainText
         }
-      : animateOn === 'click'
+      : animateOn === 'inViewHover'
         ? {
-            onClick: handleClick
+            onMouseEnter: () => {
+              if (isAnimating) return;
+              setRevealedIndices(new Set());
+              setIsDecrypted(false);
+              setDisplayText(text);
+              setDirection('forward');
+              setIsAnimating(true);
+            },
+            onMouseLeave: () => {
+              // Don't reset on mouse leave for inViewHover - let auto-loop continue
+            }
           }
-        : {};
+        : animateOn === 'click'
+          ? {
+              onClick: handleClick
+            }
+          : {}
 
   return (
     <motion.span className={parentClassName} ref={containerRef} style={styles.wrapper} {...animateProps} {...props}>
