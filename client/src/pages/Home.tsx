@@ -240,7 +240,7 @@ export default function Home() {
                 borderRadius={28}
                 borderOpacity={0.4}
                 brightness={100}
-                onHoverScale={1.02}
+                onHoverScale={1}
                 enableHaptics={true}
                 className="shadow-2xl"
               >
