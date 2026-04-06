@@ -1,0 +1,162 @@
+/* GlassCard Component Styles */
+
+.glass-card {
+  /* CSS Variables (set via props) */
+  --glass-blur: 12px;
+  --glass-saturation: 180%;
+  --glass-opacity: 0.1;
+  --glass-border-color: rgba(255, 255, 255, 0.2);
+  --glass-border-size: 1px;
+  --glass-border-radius: 24px;
+  --glass-border-opacity: 0.4;
+  --glass-inner-glow-color: rgba(255, 255, 255, 0.2);
+  --glass-inner-glow-blur: 10px;
+  --glass-brightness: 100%;
+  --glass-hover-scale: 1.02;
+  --glass-transition: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+
+  /* Base styles */
+  position: relative;
+  border-radius: var(--glass-border-radius);
+  overflow: hidden;
+  isolation: isolate;
+  transform: translate3d(0, 0, 0.01px);
+  will-change: transform;
+  content-visibility: auto;
+
+  /* Glassmorphism effect */
+  background: rgba(255, 255, 255, var(--glass-opacity));
+  border: var(--glass-border-size) solid var(--glass-border-color);
+  
+  /* GPU-accelerated backdrop filter */
+  @supports (backdrop-filter: blur(1px)) {
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+  }
+
+  /* Fallback for unsupported browsers */
+  @supports not (backdrop-filter: blur(1px)) {
+    background: rgba(255, 255, 255, calc(var(--glass-opacity) * 2));
+    border-color: rgba(255, 255, 255, calc(var(--glass-border-opacity) * 0.8));
+  }
+
+  /* Box shadow for depth */
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.2),
+    0 8px 32px 0 rgba(31, 38, 135, 0.37);
+
+  /* Smooth transitions */
+  transition: 
+    transform var(--glass-transition),
+    box-shadow var(--glass-transition),
+    border-color var(--glass-transition);
+
+  /* Cursor feedback */
+  cursor: pointer;
+}
+
+/* Hover state with spring easing */
+.glass-card--hovering {
+  transform: scale(var(--glass-hover-scale));
+  box-shadow:
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.3),
+    0 12px 48px 0 rgba(31, 38, 135, 0.5);
+  border-color: rgba(255, 255, 255, calc(var(--glass-border-opacity) * 1.5));
+}
+
+/* Inner glow effect */
+.glass-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    circle at 30% 30%,
+    var(--glass-inner-glow-color),
+    transparent 50%
+  );
+  filter: blur(var(--glass-inner-glow-blur));
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* Content wrapper */
+.glass-card__content {
+  position: relative;
+  z-index: 1;
+  padding: inherit;
+  /* Ensure text contrast */
+  color: inherit;
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card {
+    --glass-transition: none;
+    will-change: auto;
+  }
+
+  .glass-card--hovering {
+    transform: none;
+  }
+}
+
+/* Accessibility: Reduced transparency support */
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card {
+    --glass-opacity: 0.3;
+    --glass-border-opacity: 0.6;
+    background: rgba(255, 255, 255, var(--glass-opacity));
+  }
+}
+
+/* Accessibility: High contrast mode */
+@media (prefers-contrast: more) {
+  .glass-card {
+    border-width: calc(var(--glass-border-size) * 2);
+    background: rgba(255, 255, 255, calc(var(--glass-opacity) * 1.5));
+  }
+}
+
+/* Mobile optimization */
+@media (max-width: 768px) {
+  .glass-card {
+    /* Reduce blur on mobile for performance */
+    --glass-blur: 8px;
+    /* Reduce animation on touch devices */
+    --glass-transition: 0.15s cubic-bezier(0.25, 1, 0.5, 1);
+  }
+}
+
+/* Performance: Limit simultaneous glass elements */
+.glass-card:nth-child(n+9) {
+  content-visibility: auto;
+  contain: layout style paint;
+}
+
+/* Focus states for keyboard navigation */
+.glass-card:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.8);
+  outline-offset: 2px;
+}
+
+/* Active state (press feedback) */
+.glass-card:active {
+  transform: scale(0.98);
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  .glass-card {
+    --glass-border-color: rgba(255, 255, 255, 0.15);
+    --glass-inner-glow-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Light mode support */
+@media (prefers-color-scheme: light) {
+  .glass-card {
+    --glass-border-color: rgba(0, 0, 0, 0.1);
+    --glass-inner-glow-color: rgba(255, 255, 255, 0.4);
+  }
+}

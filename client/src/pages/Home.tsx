@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useHapticFeedback } from "@/hooks/useHapticFeedback";
+import { useGlassHaptics } from "@/hooks/useGlassHaptics";
+import GlassCard from "@/components/GlassCard";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
@@ -39,6 +41,7 @@ export default function Home() {
   const headerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const { onScroll, onSubmit } = useHapticFeedback();
+  const { triggerHaptic: triggerGlassHaptic } = useGlassHaptics({ enableHaptics: true });
 
   useEffect(() => {
     setMounted(true);
@@ -229,8 +232,18 @@ export default function Home() {
 
           {/* URL Checker Card */}
           <div className="max-w-fluid-md mx-auto mb-clamp">
-            <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true}>
-              <Card className="p-clamp shadow-2xl border border-white/10 bg-slate-900/40 backdrop-blur-xl text-slate-100 rounded-[28px]">
+            <GlassCard
+              blur={12}
+              saturation={180}
+              opacity={0.15}
+              borderRadius={28}
+              borderOpacity={0.4}
+              brightness={100}
+              onHoverScale={1.02}
+              enableHaptics={true}
+              className="shadow-2xl"
+            >
+              <Card className="p-clamp text-slate-100">
                 <form onSubmit={handleCheckURL} className="space-y-6">
                   <div className="space-y-4">
                     <label htmlFor="url-input" className="text-center block text-fluid-h3 font-bold text-slate-100">Enter URL to Check</label>
@@ -274,7 +287,7 @@ export default function Home() {
                   </div>
                 </form>
               </Card>
-            </BorderGlow>
+            </GlassCard>
           </div>
 
           {/* Loading State */}
