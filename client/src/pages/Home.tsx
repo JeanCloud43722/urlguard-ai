@@ -232,18 +232,19 @@ export default function Home() {
 
           {/* URL Checker Card */}
           <div className="max-w-fluid-md mx-auto mb-clamp">
-            <GlassCard
-              blur={12}
-              saturation={180}
-              opacity={0.15}
-              borderRadius={28}
-              borderOpacity={0.4}
-              brightness={100}
-              onHoverScale={1.02}
-              enableHaptics={true}
-              className="shadow-2xl"
-            >
-              <Card className="p-clamp text-slate-100">
+            <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.2} edgeSensitivity={40} backgroundColor="#060010" animated={true}>
+              <GlassCard
+                blur={12}
+                saturation={180}
+                opacity={0.15}
+                borderRadius={28}
+                borderOpacity={0.4}
+                brightness={100}
+                onHoverScale={1.02}
+                enableHaptics={true}
+                className="shadow-2xl"
+              >
+                <Card className="p-clamp text-slate-100">
                 <form onSubmit={handleCheckURL} className="space-y-6">
                   <div className="space-y-4">
                     <label htmlFor="url-input" className="text-center block text-fluid-h3 font-bold text-slate-100">Enter URL to Check</label>
@@ -287,7 +288,8 @@ export default function Home() {
                   </div>
                 </form>
               </Card>
-            </GlassCard>
+              </GlassCard>
+            </BorderGlow>
           </div>
 
           {/* Loading State */}
