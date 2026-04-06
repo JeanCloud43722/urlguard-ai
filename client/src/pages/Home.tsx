@@ -249,18 +249,20 @@ export default function Home() {
                   <div className="space-y-4">
                     <label htmlFor="url-input" className="text-center block text-fluid-h3 font-bold text-slate-100">Enter URL to Check</label>
                     <div className="flex flex-col gap-clamp-sm">
-                      <input
-                        id="url-input"
-                        type="url"
-                        placeholder="https://example.com"
-                        value={urlInput}
-                        onChange={(e) => setUrlInput(e.target.value)}
-                        disabled={isLoading}
-                        className="w-full px-clamp py-3 rounded-full bg-slate-800/50 border border-blue-500/30 text-slate-100 placeholder-slate-500 text-center focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all touch-target"
-                        autoComplete="url"
-                        spellCheck="false"
-                        aria-label="Search input field"
-                      />
+                      <BorderGlow glowColor="210 100 50" borderRadius={28} glowIntensity={1.5} edgeSensitivity={40} backgroundColor="#1a1a2e" animated={true} className="animate-glow-rotate-7s">
+                        <input
+                          id="url-input"
+                          type="url"
+                          placeholder="https://example.com"
+                          value={urlInput}
+                          onChange={(e) => setUrlInput(e.target.value)}
+                          disabled={isLoading}
+                          className="w-full px-clamp py-3 rounded-full bg-slate-800/50 border border-transparent text-slate-100 placeholder-slate-500 text-center focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all touch-target"
+                          autoComplete="url"
+                          spellCheck="false"
+                          aria-label="Search input field"
+                        />
+                      </BorderGlow>
                       <BorderGlow
                         borderRadius={28}
                         glowIntensity={1.2}
