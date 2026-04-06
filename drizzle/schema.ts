@@ -71,3 +71,19 @@ export const screenshots = mysqlTable("screenshots", {
 
 export type Screenshot = typeof screenshots.$inferSelect;
 export type InsertScreenshot = typeof screenshots.$inferInsert;
+
+// OCR Analysis table for storing extracted text and detected phishing indicators
+export const ocrAnalysis = mysqlTable('ocr_analysis', {
+  id: int('id').autoincrement().primaryKey(),
+  checkId: int('checkId').notNull(),
+  userId: int('userId').notNull(),
+  extractedText: text('extractedText').notNull(),
+  detectedIndicators: text('detectedIndicators'), // JSON array
+  confidence: int('confidence').notNull(), // 0-100 scale
+  language: varchar('language', { length: 10 }).notNull(),
+  processingTime: int('processingTime').notNull(), // milliseconds
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export type OCRAnalysis = typeof ocrAnalysis.$inferSelect;
+export type InsertOCRAnalysis = typeof ocrAnalysis.$inferInsert;

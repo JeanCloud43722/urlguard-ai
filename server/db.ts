@@ -1,6 +1,6 @@
 import { eq, desc } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, urlChecks, batchJobs, screenshots, InsertURLCheck, InsertBatchJob, InsertScreenshot } from "../drizzle/schema";
+import { InsertUser, users, urlChecks, batchJobs, screenshots, ocrAnalysis, InsertURLCheck, InsertBatchJob, InsertScreenshot, InsertOCRAnalysis } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -149,6 +149,26 @@ export async function getScreenshotsByURLCheckId(urlCheckId: number) {
   const db = await getDb();
   if (!db) throw new Error("Database not available");
   return db.select().from(screenshots).where(eq(screenshots.urlCheckId, urlCheckId));
+}
+
+// OCR Analysis queries
+export async function createOCRAnalysis(analysis: InsertOCRAnalysis) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.insert(ocrAnalysis).values(analysis);
+}
+
+export async function getOCRAnalysisByCheckId(checkId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db.select().from(ocrAnalysis).where(eq(ocrAnalysis.checkId, checkId)).limit(1);
+  return result[0];
+}
+
+export async function updateCheck(checkId: number, updates: Partial<InsertURLCheck>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  return db.update(urlChecks).set(updates).where(eq(urlChecks.id, checkId));
 }
 
 // TODO: add feature queries here as your schema grows.

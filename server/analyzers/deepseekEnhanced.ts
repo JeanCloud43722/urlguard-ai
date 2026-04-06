@@ -233,6 +233,85 @@ export class EnhancedDeepSeekClient {
   }
 
   /**
+   * Analyze URL with OCR data from screenshot
+   */
+  async analyzeWithOCRData(
+    url: string,
+    certificateInfo: any,
+    heuristicIndicators: string[],
+    affiliateInfo: any,
+    ocrData?: { text: string; indicators: string[]; confidence: number }
+  ): Promise<PhishingAnalysisResult> {
+    const { SYSTEM_PROMPT, buildUserPrompt, validateResponse } = await import("./deepseekPrompt");
+    
+    // Enhance user prompt with OCR data if available
+    const enhancedContext = {
+      url,
+      certificateInfo,
+      heuristicIndicators,
+      affiliateInfo,
+      ocrData: ocrData ? {
+        extractedText: ocrData.text.substring(0, 1000), // Limit to 1000 chars
+        ocrIndicators: ocrData.indicators,
+        ocrConfidence: ocrData.confidence,
+      } : undefined,
+    };
+    
+    const userPrompt = buildUserPrompt(enhancedContext);
+    const startTime = Date.now();
+    const operationName = `analyzeWithOCR:${url}`;
+
+    try {
+      const result = await this.retryWithBackoff(async () => {
+        const response = await this.client.post(
+          "/chat/completions",
+          {
+            model: "deepseek-chat",
+            messages: [
+              { role: "system", content: SYSTEM_PROMPT + "\n\nYou also have access to OCR-extracted text from the website screenshot. Use this additional data to enhance your phishing detection accuracy." },
+              { role: "user", content: userPrompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 1000,
+            response_format: { type: "json_object" },
+          },
+          { timeout: this.timeoutConfig.longTimeout }
+        );
+
+        const content = response.data.choices[0]?.message?.content;
+        if (!content) {
+          throw new Error("Invalid DeepSeek response: no content");
+        }
+
+        const parsed = JSON.parse(content);
+
+        // Validate response structure
+        if (!validateResponse(parsed)) {
+          throw new Error("Invalid response structure from DeepSeek");
+        }
+
+        const tokensUsed = response.data.usage?.total_tokens || 0;
+        this.recordMetric(operationName, tokensUsed, Date.now() - startTime);
+
+        return {
+          riskScore: parsed.fraud_score,
+          riskLevel: parsed.risk_level,
+          analysis: parsed.analysis + (ocrData ? `\n\n[OCR Enhanced] Analyzed ${ocrData.text.split(' ').length} words from website screenshot.` : ""),
+          phishingIndicators: parsed.phishing_indicators || [],
+          confidence: parsed.confidence,
+          tokensUsed,
+          cached: false,
+        };
+      }, operationName);
+
+      return result;
+    } catch (error) {
+      console.error(`[DeepSeek] ${operationName} failed:`, (error as Error).message);
+      throw new Error(`DeepSeek OCR analysis failed: ${(error as Error).message}`);
+    }
+  }
+
+  /**
    * Analyze URL with full context (certificate, indicators, affiliate info)
    */
   async analyzeWithFullContext(

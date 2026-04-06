@@ -25,6 +25,14 @@ export interface ResultModalProps {
       analysis: string;
       phishingIndicators: string[];
     };
+    ocrResults?: {
+      extractedText: string;
+      indicators: string[];
+      confidence: number;
+      summary: string;
+    };
+    screenshotUrl?: string;
+    ocrQueued?: boolean;
     createdAt: Date;
   };
   autoCloseDuration?: number;

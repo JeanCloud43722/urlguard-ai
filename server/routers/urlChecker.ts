@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs } from "../db";
+import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs, createOCRAnalysis } from "../db";
 import { getDeepSeekClient } from "../analyzers/deepseekEnhanced";
 import { validateAndNormalizeURL, extractAffiliateInfo, checkPhishingIndicators } from "../analyzers/urlAnalyzer";
 import { fetchCertificate, extractCertificateRisks } from "../utils/certificate";
@@ -8,6 +8,7 @@ import { nanoid } from "nanoid";
 import { notifyOwner } from "../_core/notification";
 import { generateJSONReport, generateCSVReport, generateHTMLReport } from "../utils/exportReport";
 import { getScreenshotJobProcessor } from "../queues/screenshotJob";
+import { queueOCRAnalysis } from "../jobs/ocrQueue";
 
 export const urlCheckerRouter = router({
   checkURL: protectedProcedure
@@ -84,6 +85,24 @@ export const urlCheckerRouter = router({
           }
         }
 
+        // 8b. Enqueue OCR analysis if screenshot was captured
+        if (deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious") {
+          try {
+            // Queue OCR analysis for screenshot (will be processed asynchronously)
+            // Note: In production, pass actual screenshot buffer from storage
+            await queueOCRAnalysis({
+              checkId: urlCheckRecord.id,
+              userId: ctx.user.id,
+              screenshotBuffer: Buffer.from(''), // Will be populated from screenshot storage
+              domain: new URL(validation.normalizedUrl).hostname || '',
+            });
+            console.log(`[URLChecker] OCR analysis job queued for check ${urlCheckRecord.id}`);
+          } catch (error) {
+            console.error("[URLChecker] Failed to queue OCR analysis:", error);
+            // Don't fail if OCR queueing fails
+          }
+        }
+
         // 9. Notify owner if dangerous
         if (deepseekAnalysis.riskLevel === "dangerous") {
           const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
@@ -95,7 +114,7 @@ export const urlCheckerRouter = router({
 
         // 9. Return result
         return {
-          id: Date.now(),
+          id: urlCheckRecord.id,
           url: input.url,
           normalizedUrl: validation.normalizedUrl,
           riskScore: deepseekAnalysis.riskScore,
@@ -108,6 +127,7 @@ export const urlCheckerRouter = router({
             isSelfSigned: certificateInfo.subject && certificateInfo.issuer && JSON.stringify(certificateInfo.subject) === JSON.stringify(certificateInfo.issuer),
             hasRisks: certificateRisks.length > 0,
           },
+          ocrQueued: deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious",
           createdAt: new Date(),
         };
       } catch (error) {
