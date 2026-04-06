@@ -180,7 +180,7 @@ export default function Home() {
               maxIterations={15}
               sequential={true}
               revealDirection="center"
-              animateOn="view"
+              animateOn="inViewHover"
               className="text-slate-100"
               encryptedClassName="text-blue-400/60"
             />
@@ -192,7 +192,7 @@ export default function Home() {
               maxIterations={20}
               sequential={true}
               revealDirection="start"
-              animateOn="view"
+              animateOn="inViewHover"
               className="text-slate-400"
               encryptedClassName="text-slate-500/40"
             />
