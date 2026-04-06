@@ -197,13 +197,12 @@ export default function Home() {
       {/* Main Content */}
       <div 
         ref={contentRef}
-        className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-y-auto"
+        className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-hidden"
         data-scrollable
-        onScroll={onScroll}
       >
         <div className="max-w-fluid-lg mx-auto space-y-8 gap-clamp">
         {/* Hero Section */}
-        <div className="text-center mb-clamp">
+        <div className="text-center mb-clamp overflow-hidden">
           <h2 className="text-fluid-h1 font-bold text-slate-100 mb-4">
             <DecryptedText 
               text="Phishing Detection Made Simple" 
