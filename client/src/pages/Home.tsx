@@ -197,8 +197,9 @@ export default function Home() {
       {/* Main Content */}
       <div 
         ref={contentRef}
-        className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-hidden"
+        className="flex-1 w-full px-clamp py-clamp relative z-10 overflow-y-auto"
         data-scrollable
+        onScroll={onScroll}
       >
         <div className="max-w-fluid-lg mx-auto space-y-8 gap-clamp">
         {/* Hero Section */}
