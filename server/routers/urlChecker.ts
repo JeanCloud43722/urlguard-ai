@@ -9,9 +9,12 @@ import { notifyOwner } from "../_core/notification";
 import { generateJSONReport, generateCSVReport, generateHTMLReport } from "../utils/exportReport";
 import { getScreenshotJobProcessor } from "../queues/screenshotJob";
 import { queueOCRAnalysis } from "../jobs/ocrQueue";
+import { getRedisService } from "../services/redis";
+import { protectedProcedureWithConcurrency } from "../_core/trpc";
+import crypto from "crypto";
 
 export const urlCheckerRouter = router({
-  checkURL: protectedProcedure
+  checkURL: protectedProcedureWithConcurrency
     .input(z.object({ url: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -21,11 +24,74 @@ export const urlCheckerRouter = router({
           throw new Error(validation.error || "Invalid URL");
         }
 
+        // 1b. Check Redis cache
+        const redis = getRedisService();
+        const urlHash = crypto.createHash('sha256').update(validation.normalizedUrl).digest('hex');
+        const cacheKey = `url:${urlHash}`;
+        const cached = await redis.getAnalysisCache(urlHash);
+        if (cached) {
+          console.log(`[Cache] HIT for ${validation.normalizedUrl}`);
+          return cached;
+        }
+
         // 2. Extract affiliate info
         const affiliateInfo = extractAffiliateInfo(validation.normalizedUrl);
 
         // 3. Check for local phishing indicators
         const localIndicators = checkPhishingIndicators(validation.normalizedUrl);
+
+        // 3b. Heuristic early-exit for obvious URLs
+        const isObviouslySafe = localIndicators.length === 0 && 
+          (validation.domain.endsWith('.com') || validation.domain.endsWith('.org') || validation.domain.endsWith('.edu')) &&
+          !validation.domain.includes('login') && 
+          !validation.domain.includes('verify') &&
+          !validation.domain.includes('secure') &&
+          !validation.domain.includes('confirm') &&
+          !validation.domain.includes('update');
+
+        const isObviouslyDangerous = localIndicators.some(i => 
+          i.includes('IP address') || i.includes('.tk') || i.includes('.ml') || i.includes('.ga') || i.includes('.cf')
+        );
+
+        if (isObviouslySafe) {
+          const result = {
+            id: 0,
+            url: input.url,
+            normalizedUrl: validation.normalizedUrl,
+            riskScore: 5,
+            riskLevel: 'safe' as const,
+            analysis: 'Heuristic analysis indicates safe URL (no suspicious indicators).',
+            indicators: [],
+            affiliateInfo,
+            confidence: 0.9,
+            certificateInfo: { isSelfSigned: false, hasRisks: false },
+            ocrQueued: false,
+            createdAt: new Date(),
+          };
+          await redis.setAnalysisCache(urlHash, result, 86400);
+          console.log(`[Cache] Stored (heuristic safe) ${validation.normalizedUrl}`);
+          return result;
+        }
+
+        if (isObviouslyDangerous) {
+          const result = {
+            id: 0,
+            url: input.url,
+            normalizedUrl: validation.normalizedUrl,
+            riskScore: 90,
+            riskLevel: 'dangerous' as const,
+            analysis: 'Obvious phishing indicators detected (IP address or known malicious TLD).',
+            indicators: localIndicators,
+            affiliateInfo,
+            confidence: 0.95,
+            certificateInfo: { isSelfSigned: false, hasRisks: false },
+            ocrQueued: false,
+            createdAt: new Date(),
+          };
+          await redis.setAnalysisCache(urlHash, result, 86400);
+          console.log(`[Cache] Stored (heuristic dangerous) ${validation.normalizedUrl}`);
+          return result;
+        }
 
         // 4. Fetch SSL certificate info (if HTTPS)
         let certificateInfo: any = {};
@@ -113,7 +179,7 @@ export const urlCheckerRouter = router({
         }
 
         // 9. Return result
-        return {
+        const result = {
           id: urlCheckRecord.id,
           url: input.url,
           normalizedUrl: validation.normalizedUrl,
@@ -130,6 +196,12 @@ export const urlCheckerRouter = router({
           ocrQueued: deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious",
           createdAt: new Date(),
         };
+
+        // 9b. Cache result for 24 hours
+        await redis.setAnalysisCache(urlHash, result, 86400);
+        console.log(`[Cache] Stored ${validation.normalizedUrl}`);
+
+        return result;
       } catch (error) {
         console.error("URL check error:", error);
         throw new Error(`Failed to analyze URL: ${(error as Error).message}`);

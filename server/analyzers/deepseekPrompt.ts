@@ -53,82 +53,41 @@ export function buildUserPrompt(data: ContextData): string {
   const affiliateSection = formatAffiliateInfo(data.affiliateInfo);
   const brandSection = formatBrandImpersonationContext(data.url);
 
-  return `
-URL to analyze: ${data.url}
-
+  return `URL: ${data.url}
 ${certificateSection}
-
 ${indicatorsSection}
-
 ${affiliateSection}
-
 ${brandSection}
 
-Based on the above data and the CRITICAL SENSITIVITY RULES provided, perform a phishing/fraud analysis.
-
-REMINDER: Apply the sensitivity rules strictly:
-- Newly registered domains (< 30 days) = +25-30 points
-- Recent SSL certificates (< 7 days) = +20-25 points
-- Suspicious TLDs with other indicators = DANGEROUS
-- Multiple indicators = fraud_score >= 80
-
-Return a JSON object with the following structure:
-{
-  "fraud_score": <number 0-100>,
-  "risk_level": <"safe" | "suspicious" | "dangerous">,
-  "analysis": <string explaining the assessment>,
-  "phishing_indicators": [<array of detected indicators>],
-  "confidence": <number 0-1>,
-  "certificate_analysis": <optional string>,
-  "recommendations": <optional string>
-}`;
+Analyze for phishing/fraud. Apply sensitivity rules strictly. Return JSON with fraud_score, risk_level, analysis, phishing_indicators, confidence.`;
 }
 
 function formatCertificateInfo(certInfo: any): string {
   if (!certInfo || Object.keys(certInfo).length === 0) {
-    return "SSL Certificate: Not available (HTTP connection or certificate fetch failed)";
+    return "SSL: N/A";
   }
 
   if (certInfo.error) {
-    return `SSL Certificate: ERROR - ${certInfo.error}`;
+    return `SSL: ERROR - ${certInfo.error.substring(0, 50)}`;
   }
 
-  const lines: string[] = ["SSL Certificate Information:"];
-
-  if (certInfo.subject) {
-    const subjectStr = typeof certInfo.subject === 'string' ? certInfo.subject : JSON.stringify(certInfo.subject);
-    lines.push(`  Subject: ${subjectStr}`);
-  }
-  if (certInfo.issuer) {
-    const issuerStr = typeof certInfo.issuer === 'string' ? certInfo.issuer : JSON.stringify(certInfo.issuer);
-    lines.push(`  Issuer: ${issuerStr}`);
-  }
-  if (certInfo.validFrom) lines.push(`  Valid From: ${certInfo.validFrom}`);
-  if (certInfo.validTo) lines.push(`  Valid To: ${certInfo.validTo}`);
-  if (certInfo.isExpired !== undefined) lines.push(`  Expired: ${certInfo.isExpired}`);
-  if (certInfo.isSelfSigned !== undefined) lines.push(`  Self-Signed: ${certInfo.isSelfSigned}`);
-  if (certInfo.daysUntilExpiry !== undefined) lines.push(`  Days Until Expiry: ${certInfo.daysUntilExpiry}`);
-  if (certInfo.daysSinceIssued !== undefined) {
-    lines.push(`  Days Since Issued: ${certInfo.daysSinceIssued}`);
-    if (certInfo.daysSinceIssued < 7) {
-      lines.push(`  WARNING: Certificate issued very recently (< 7 days) - STRONG PHISHING INDICATOR`);
-    }
+  const parts: string[] = [];
+  if (certInfo.isSelfSigned) parts.push("self-signed");
+  if (certInfo.isExpired) parts.push("expired");
+  if (certInfo.daysSinceIssued !== undefined && certInfo.daysSinceIssued < 7) {
+    parts.push(`issued ${certInfo.daysSinceIssued}d ago (phishing indicator)`);
   }
 
-  return lines.join("\n");
+  return `SSL: ${parts.length > 0 ? parts.join(", ") : "valid"}`;
 }
 
 function formatIndicators(indicators: string[]): string {
   if (!indicators || indicators.length === 0) {
-    return "Heuristic Indicators: None detected";
+    return "Heuristics: none";
   }
 
-  const lines = ["Heuristic Indicators Detected:"];
-  indicators.forEach((ind) => {
-    lines.push(`  - ${ind}`);
-  });
-
-  return lines.join("\n");
+  const top = indicators.slice(0, 3);
+  return `Heuristics: ${top.join(", ")}${indicators.length > 3 ? ` (+${indicators.length - 3} more)` : ""}`;
 }
 
 function formatBrandImpersonationContext(url: string): string {
@@ -177,23 +136,11 @@ function formatBrandImpersonationContext(url: string): string {
 
 function formatAffiliateInfo(affiliateInfo: any): string {
   if (!affiliateInfo || !affiliateInfo.isAffiliate) {
-    return "Affiliate/Redirect Parameters: None detected";
+    return "Affiliate: no";
   }
 
-  const lines = ["Affiliate/Redirect Parameters Detected:"];
-  if (affiliateInfo.targetUrl) {
-    lines.push(`  Original URL: ${affiliateInfo.originalUrl}`);
-    lines.push(`  Target URL: ${affiliateInfo.targetUrl}`);
-  }
-
-  if (affiliateInfo.affiliateParams && Object.keys(affiliateInfo.affiliateParams).length > 0) {
-    lines.push("  Affiliate Parameters:");
-    Object.entries(affiliateInfo.affiliateParams).forEach(([key, value]) => {
-      lines.push(`    ${key}: ${value}`);
-    });
-  }
-
-  return lines.join("\n");
+  const params = Object.keys(affiliateInfo.affiliateParams || {}).slice(0, 2);
+  return `Affiliate: yes (${params.join(", ")})`;
 }
 
 export function validateResponse(response: any): boolean {

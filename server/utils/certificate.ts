@@ -4,6 +4,7 @@
  */
 
 import * as tls from "tls";
+import { getRedisService } from "../services/redis";
 
 export interface CertificateInfo {
   subject?: any;
@@ -27,6 +28,18 @@ export async function fetchCertificate(
   port: number = 443,
   timeout: number = 5000
 ): Promise<CertificateInfo> {
+  // Check Redis cache first
+  try {
+    const redis = getRedisService();
+    const cached = await redis.getCertificateCache(hostname);
+    if (cached) {
+      console.log(`[Cache] Certificate HIT for ${hostname}`);
+      return cached;
+    }
+  } catch (err) {
+    console.warn(`[Cache] Certificate cache check failed: ${err}`);
+  }
+
   return new Promise((resolve) => {
     let resolved = false;
 
@@ -37,7 +50,7 @@ export async function fetchCertificate(
         rejectUnauthorized: false, // Allow self-signed certificates
         servername: hostname, // SNI support
       },
-      () => {
+      async () => {
         if (resolved) return;
         resolved = true;
 
@@ -54,33 +67,72 @@ export async function fetchCertificate(
             serialNumber: cert.serialNumber,
           };
 
+          // Cache for 1 hour
+          try {
+            const redis = getRedisService();
+            await redis.setCertificateCache(hostname, certInfo, 3600);
+            console.log(`[Cache] Certificate stored for ${hostname}`);
+          } catch (err) {
+            console.warn(`[Cache] Certificate cache store failed: ${err}`);
+          }
+
           resolve(certInfo);
         } catch (error) {
           socket.end();
-          resolve({
+          const certInfo = {
             error: `Failed to parse certificate: ${(error as Error).message}`,
-          });
+          };
+          
+          // Cache error for 5 minutes
+          try {
+            const redis = getRedisService();
+            await redis.setCertificateCache(hostname, certInfo, 300);
+          } catch (err) {
+            console.warn(`[Cache] Certificate error cache failed: ${err}`);
+          }
+          
+          resolve(certInfo);
         }
       }
     );
 
-    socket.on("error", (error) => {
+    socket.on("error", async (error) => {
       if (resolved) return;
       resolved = true;
 
-      resolve({
+      const certInfo = {
         error: `Certificate fetch error: ${error.message}`,
-      });
+      };
+      
+      // Cache error for 5 minutes
+      try {
+        const redis = getRedisService();
+        await redis.setCertificateCache(hostname, certInfo, 300);
+      } catch (err) {
+        console.warn(`[Cache] Certificate error cache failed: ${err}`);
+      }
+      
+      resolve(certInfo);
     });
 
-    socket.on("timeout", () => {
+    socket.on("timeout", async () => {
       if (resolved) return;
       resolved = true;
 
       socket.destroy();
-      resolve({
+      const certInfo = {
         error: "Certificate fetch timeout",
-      });
+      };
+      
+      // Cache error for 5 minutes
+      try {
+        const redis = getRedisService();
+        await redis.setCertificateCache(hostname, certInfo, 300);
+      } catch (err) {
+        console.warn(`[Cache] Certificate error cache failed: ${err}`);
+      }
+      
+      resolve(certInfo);
     });
 
     // Set timeout
@@ -196,35 +248,4 @@ export function extractCertificateRisks(certInfo: CertificateInfo): string[] {
   }
 
   return risks;
-}
-
-/**
- * Format certificate info for display
- * @param certInfo - Certificate information
- * @returns Formatted string representation
- */
-export function formatCertificateInfo(certInfo: CertificateInfo): string {
-  if (certInfo.error) {
-    return `Certificate Error: ${certInfo.error}`;
-  }
-
-  const lines: string[] = [];
-
-  if (certInfo.subject) {
-    lines.push(`Subject: ${JSON.stringify(certInfo.subject)}`);
-  }
-  if (certInfo.issuer) {
-    lines.push(`Issuer: ${JSON.stringify(certInfo.issuer)}`);
-  }
-  if (certInfo.valid_from) {
-    lines.push(`Valid From: ${certInfo.valid_from}`);
-  }
-  if (certInfo.valid_to) {
-    lines.push(`Valid To: ${certInfo.valid_to}`);
-  }
-  if (certInfo.fingerprint) {
-    lines.push(`Fingerprint: ${certInfo.fingerprint}`);
-  }
-
-  return lines.join("\n");
 }

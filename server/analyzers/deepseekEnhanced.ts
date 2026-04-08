@@ -34,14 +34,14 @@ export class EnhancedDeepSeekClient {
 
   constructor(
     retryConfig: DeepSeekRetryConfig = {
-      maxRetries: 3,
-      initialDelayMs: 1000,
-      maxDelayMs: 10000,
-      backoffMultiplier: 2,
+      maxRetries: 2,
+      initialDelayMs: 500,
+      maxDelayMs: 5000,
+      backoffMultiplier: 1.5,
     },
     timeoutConfig: DeepSeekTimeoutConfig = {
-      shortTimeout: 10000,
-      longTimeout: 30000,
+      shortTimeout: 5000,
+      longTimeout: 15000,
     }
   ) {
     this.retryConfig = retryConfig;
@@ -324,6 +324,7 @@ export class EnhancedDeepSeekClient {
     const userPrompt = buildUserPrompt({ url, certificateInfo, heuristicIndicators, affiliateInfo });
     const startTime = Date.now();
     const operationName = `analyzeFullContext:${url}`;
+    console.log(`[DeepSeek] Starting analysis for ${url}`);
 
     try {
       const result = await this.retryWithBackoff(async () => {
@@ -355,7 +356,13 @@ export class EnhancedDeepSeekClient {
         }
 
         const tokensUsed = response.data.usage?.total_tokens || 0;
-        this.recordMetric(operationName, tokensUsed, Date.now() - startTime);
+        const duration = Date.now() - startTime;
+        this.recordMetric(operationName, tokensUsed, duration);
+        
+        console.log(`[DeepSeek] ${url} analysed in ${duration}ms (${tokensUsed} tokens, score: ${parsed.fraud_score})`);
+        if (duration > 3000) {
+          console.warn(`[DeepSeek] SLOW RESPONSE (${duration}ms) for ${url}`);
+        }
 
         return {
           riskScore: parsed.fraud_score,
