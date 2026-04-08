@@ -62,6 +62,11 @@ export class DeepAnalysisProcessor {
         throw new Error('Database connection failed');
       }
 
+      // Detect biometric permission requests
+      const hasCameraRequest = html.includes('getUserMedia') || html.includes('getDisplayMedia') || html.includes('mediaDevices');
+      const hasMicrophoneRequest = html.includes('AudioContext') || html.includes('getUserMedia') || html.includes('microphone');
+      console.log(`[DeepAnalysis] Camera request: ${hasCameraRequest}, Microphone request: ${hasMicrophoneRequest}`);
+
       // Extract structured metadata from HTML
       const metadata = await extractStructuredData(html, url);
       console.log(`[DeepAnalysis] Extracted metadata for ${url}`);
@@ -153,12 +158,52 @@ export class DeepAnalysisProcessor {
         console.error(`[DeepAnalysis] Clustering failed for ${url}:`, clusterError);
       }
 
+      // Analyze deepfake risk if camera or microphone requests detected
+      let deepfakeRisk = null;
+      if (hasCameraRequest || hasMicrophoneRequest) {
+        try {
+          const { JSDOM } = require('jsdom');
+          const dom = new JSDOM(html);
+          const doc = dom.window.document;
+          const pageTitle = doc.querySelector('title')?.textContent || '';
+          const bodyText = doc.body?.innerText?.substring(0, 500) || '';
+
+          const prompt = `Analyze if this page is a deepfake scam requesting camera/microphone access. Title: ${pageTitle} Content: ${bodyText} Has camera: ${hasCameraRequest} Has microphone: ${hasMicrophoneRequest} Return JSON: {"isDeepfakeScam": boolean, "confidence": 0-1, "reason": "string"}`;
+
+          const { invokeLLM } = require('../_core/llm');
+          const response = await invokeLLM({
+            messages: [
+              { role: 'system', content: 'You are a security expert detecting deepfake scam pages. Return only valid JSON.' },
+              { role: 'user', content: prompt },
+            ],
+          });
+
+          const responseContent = response.choices[0]?.message?.content;
+          const responseText = typeof responseContent === 'string' ? responseContent : '';
+          
+          try {
+            const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+            if (jsonMatch) {
+              deepfakeRisk = JSON.parse(jsonMatch[0]);
+              console.log(`[DeepAnalysis] Deepfake analysis result:`, deepfakeRisk);
+            }
+          } catch (parseError) {
+            console.error(`[DeepAnalysis] Failed to parse deepfake response:`, parseError);
+          }
+        } catch (deepfakeError) {
+          console.error(`[DeepAnalysis] Deepfake analysis failed:`, deepfakeError);
+        }
+      }
+
       // Update database with extracted data and cluster info
       await db
         .update(urlChecks)
         .set({
           structuredMetadata: JSON.stringify(metadata),
           xmlData: JSON.stringify(xmlData),
+          deepfakeRisk: deepfakeRisk ? JSON.stringify(deepfakeRisk) : null,
+          hasCameraRequest: hasCameraRequest ? 1 : 0,
+          hasMicrophoneRequest: hasMicrophoneRequest ? 1 : 0,
           metadataProcessedAt: new Date(),
           xmlProcessedAt: new Date(),
           updatedAt: new Date(),

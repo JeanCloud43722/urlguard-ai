@@ -45,6 +45,9 @@ export const urlChecks = mysqlTable("url_checks", {
   xmlProcessedAt: timestamp("xmlProcessedAt"),
   utmData: text("utmData"), // JSON: {source, medium, campaign, term, content}
   referrer: text("referrer"),
+  deepfakeRisk: text("deepfakeRisk"), // JSON: {isDeepfakeScam, confidence, reason}
+  hasCameraRequest: int("hasCameraRequest").default(0), // 0 = false, 1 = true
+  hasMicrophoneRequest: int("hasMicrophoneRequest").default(0), // 0 = false, 1 = true
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

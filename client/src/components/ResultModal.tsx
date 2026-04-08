@@ -48,12 +48,13 @@ const ResultModal: React.FC<ResultModalProps> = ({
 }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(autoCloseDuration / 1000);
-  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml' | 'fingerprint' | 'cluster'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml' | 'fingerprint' | 'cluster' | 'deepfake'>('overview');
   const [ocrData, setOcrData] = useState<any>(null);
   const [metadataData, setMetadataData] = useState<any>(null);
   const [xmlData, setXmlData] = useState<any>(null);
   const [fingerprintData, setFingerprintData] = useState<any>(null);
   const [clusterData, setClusterData] = useState<any>(null);
+  const [deepfakeData, setDeepfakeData] = useState<any>(null);
   const [isPolling, setIsPolling] = useState(false);
 
   // Polling queries
@@ -77,6 +78,11 @@ const ResultModal: React.FC<ResultModalProps> = ({
     { enabled: false, staleTime: 0 }
   );
 
+  const deepfakeQuery = trpc.screenshots.getDeepfakeRisk.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
   const clusterQuery = trpc.analysis.getCluster.useQuery(
     { checkId: result.id || 0 },
     { enabled: false, staleTime: 0 }
@@ -89,18 +95,20 @@ const ResultModal: React.FC<ResultModalProps> = ({
     setIsPolling(true);
     const pollInterval = setInterval(async () => {
       try {
-        const [ocr, metadata, xml] = await Promise.all([
+        const [ocr, metadata, xml, deepfake] = await Promise.all([
           ocrQuery.refetch(),
           metadataQuery.refetch(),
           xmlQuery.refetch(),
+          deepfakeQuery.refetch(),
         ]);
 
         if (ocr.data) setOcrData(ocr.data);
         if (metadata.data) setMetadataData(metadata.data);
         if (xml.data) setXmlData(xml.data);
+        if (deepfake.data) setDeepfakeData(deepfake.data);
 
         // Stop polling if all data is loaded
-        if (ocr.data && metadata.data && xml.data) {
+        if (ocr.data && metadata.data && xml.data && deepfake.data) {
           setIsPolling(false);
           clearInterval(pollInterval);
         }
@@ -238,6 +246,9 @@ const ResultModal: React.FC<ResultModalProps> = ({
             </button>
             <button onClick={() => setActiveTab('cluster')} className={tabClasses('cluster')}>
               Campaign {clusterData && '✓'}
+            </button>
+            <button onClick={() => setActiveTab('deepfake')} className={tabClasses('deepfake')}>
+              Deepfake {deepfakeData && '✓'}
             </button>
           </div>
 
@@ -457,6 +468,79 @@ const ResultModal: React.FC<ResultModalProps> = ({
                 )}
                 {!clusterData && !isPolling && (
                   <p className="text-xs text-slate-400">No campaign data available</p>
+                )}
+              </div>
+            )}
+
+            {/* Deepfake Risk Tab */}
+            {activeTab === 'deepfake' && (
+              <div>
+                {deepfakeData ? (
+                  <div>
+                    {/* Permission Indicators */}
+                    <div className="mb-4 space-y-2">
+                      {deepfakeData.hasCameraRequest && (
+                        <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg flex items-start gap-2">
+                          <span className="text-yellow-400 text-lg">⚠️</span>
+                          <div>
+                            <p className="text-sm font-semibold text-yellow-300">Camera Access Requested</p>
+                            <p className="text-xs text-yellow-200 mt-1">This page requests access to your camera</p>
+                          </div>
+                        </div>
+                      )}
+                      {deepfakeData.hasMicrophoneRequest && (
+                        <div className="p-3 bg-yellow-500/20 border border-yellow-500/30 rounded-lg flex items-start gap-2">
+                          <span className="text-yellow-400 text-lg">⚠️</span>
+                          <div>
+                            <p className="text-sm font-semibold text-yellow-300">Microphone Access Requested</p>
+                            <p className="text-xs text-yellow-200 mt-1">This page requests access to your microphone</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Deepfake Analysis Result */}
+                    {deepfakeData.deepfakeRisk ? (
+                      <div className={`p-4 rounded-lg border ${
+                        deepfakeData.deepfakeRisk.isDeepfakeScam
+                          ? 'bg-red-500/20 border-red-500/30'
+                          : 'bg-green-500/20 border-green-500/30'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          <span className="text-2xl">
+                            {deepfakeData.deepfakeRisk.isDeepfakeScam ? '🚨' : '✅'}
+                          </span>
+                          <div className="flex-1">
+                            <h4 className={`font-bold text-sm ${
+                              deepfakeData.deepfakeRisk.isDeepfakeScam
+                                ? 'text-red-300'
+                                : 'text-green-300'
+                            }`}>
+                              {deepfakeData.deepfakeRisk.isDeepfakeScam
+                                ? 'Deepfake Scam Detected'
+                                : 'No Deepfake Risk Detected'}
+                            </h4>
+                            <p className="text-xs text-slate-300 mt-2">
+                              {deepfakeData.deepfakeRisk.reason}
+                            </p>
+                            <p className={`text-xs mt-2 font-semibold ${
+                              deepfakeData.deepfakeRisk.isDeepfakeScam
+                                ? 'text-red-400'
+                                : 'text-green-400'
+                            }`}>
+                              Confidence: {(deepfakeData.deepfakeRisk.confidence * 100).toFixed(0)}%
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-slate-400">No deepfake analysis available</p>
+                    )}
+                  </div>
+                ) : !isPolling ? (
+                  <p className="text-xs text-slate-400">No deepfake risk data available</p>
+                ) : (
+                  <p className="text-xs text-slate-400">Loading deepfake analysis...</p>
                 )}
               </div>
             )}

@@ -188,6 +188,50 @@ export const screenshotRouter = router({
         });
       }
     }),
+
+  /**
+   * Get deepfake risk analysis
+   */
+  getDeepfakeRisk: publicProcedure
+    .input(z.object({ checkId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const result = await db
+          .select({
+            deepfakeRisk: urlChecks.deepfakeRisk,
+            hasCameraRequest: urlChecks.hasCameraRequest,
+            hasMicrophoneRequest: urlChecks.hasMicrophoneRequest,
+          })
+          .from(urlChecks)
+          .where(eq(urlChecks.id, input.checkId))
+          .limit(1);
+
+        if (!result.length) {
+          return null;
+        }
+
+        const data = result[0];
+        return {
+          deepfakeRisk: data.deepfakeRisk ? JSON.parse(data.deepfakeRisk) : null,
+          hasCameraRequest: data.hasCameraRequest === 1,
+          hasMicrophoneRequest: data.hasMicrophoneRequest === 1,
+        };
+      } catch (error) {
+        console.error('[tRPC] Error getting deepfake risk:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to get deepfake risk',
+        });
+      }
+    }),
 });
 
 export type ScreenshotRouter = typeof screenshotRouter;
