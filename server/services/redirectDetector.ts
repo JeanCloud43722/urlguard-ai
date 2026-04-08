@@ -5,6 +5,8 @@
 
 import axios, { AxiosResponse } from 'axios';
 import { URL } from 'url';
+import { checkRedirectWhitelist } from './redirectWhitelist';
+import { notifyWebhooks } from './webhookNotifier';
 
 export interface RedirectHop {
   fromUrl: string;
@@ -74,8 +76,33 @@ export async function detectRedirectChain(url: string, maxHops = 10): Promise<Re
     }
   }
   
+  // Check whitelist first
+  const whitelistResult = await checkRedirectWhitelist(url, currentUrl, hops.length);
+  if (whitelistResult.isWhitelisted) {
+    console.log(`[RedirectDetector] Whitelisted: ${whitelistResult.matchedRule}`);
+    return {
+      originalUrl: url,
+      finalUrl: currentUrl,
+      hops,
+      statusCode: finalStatusCode,
+      redirectCount: hops.length,
+      isLikelyPhishing: false,
+    };
+  }
+  
   // Analyze redirect pattern for phishing indicators
   const isLikelyPhishing = analyzeRedirectPattern(url, currentUrl, hops);
+  
+  // Send webhook alert if suspicious
+  if (isLikelyPhishing && hops.length >= 3) {
+    notifyWebhooks('dangerous_url_detected', {
+      url,
+      finalUrl: currentUrl,
+      redirectCount: hops.length,
+      isSuspicious: true,
+      reason: 'Suspicious redirect chain detected',
+    }).catch(err => console.error('[RedirectDetector] Webhook notification failed:', err));
+  }
   
   return {
     originalUrl: url,

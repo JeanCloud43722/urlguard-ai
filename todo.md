@@ -354,3 +354,41 @@
 - [x] Create browser support matrix
 - [x] List haptic feedback patterns
 - [x] Document CSS variable customization
+
+
+## Phase 18: Redirect Whitelist & Analytics (Current)
+
+### Redirect Whitelist Implementation
+- [x] Add redirect_whitelist table (trusted domain pairs)
+- [x] Add trusted_redirect_patterns table (regex patterns)
+- [x] Create redirectWhitelist.ts service with checkRedirectWhitelist()
+- [x] Integrate whitelist check into redirectDetector.ts
+- [x] Skip phishing analysis for whitelisted redirects
+
+### Redirect Analytics Dashboard
+- [x] Create analytics.ts router with redirect pattern queries
+- [x] Add getRedirectStats procedure (total, phishing, safe counts)
+- [x] Add getCommonRedirectPairs procedure (top redirect patterns)
+- [x] Add getPhishingRedirectChains procedure (suspicious patterns)
+- [x] Add getRedirectTrends procedure (time-series analytics)
+
+### Analytics Frontend
+- [x] Create RedirectAnalytics.tsx component
+- [x] Display redirect statistics (total, phishing, safe)
+- [x] Show top redirect patterns with counts
+- [x] Display phishing redirect chains
+- [x] Show redirect trends over time
+
+### Webhook Alerts for Suspicious Redirects
+- [x] Add webhook notification trigger in redirectDetector.ts
+- [x] Fire 'dangerous_url_detected' event for 3+ hop chains
+- [x] Include redirect chain data in webhook payload
+- [x] Async notification (non-blocking)
+- [x] Error handling for webhook delivery failures
+
+### Integration & Testing
+- [x] Wire analytics router into main app router
+- [x] Test redirect whitelist functionality
+- [x] Test analytics queries with sample data
+- [x] Verify webhook notifications fire correctly
+- [x] Test end-to-end redirect detection flow

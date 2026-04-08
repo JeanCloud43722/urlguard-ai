@@ -215,3 +215,30 @@ export const redirectHops = mysqlTable('redirect_hops', {
 
 export type RedirectHop = typeof redirectHops.$inferSelect;
 export type InsertRedirectHop = typeof redirectHops.$inferInsert;
+
+// Redirect whitelist for trusted patterns
+export const redirectWhitelist = mysqlTable('redirect_whitelist', {
+  id: int('id').primaryKey().autoincrement(),
+  sourcePattern: varchar('source_pattern', { length: 255 }).notNull(),
+  targetPattern: varchar('target_pattern', { length: 255 }),
+  allowedHopCount: int('allowed_hop_count').default(2),
+  reason: varchar('reason', { length: 255 }),
+  isActive: int('is_active').default(1),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  createdBy: varchar('created_by', { length: 100 }),
+});
+
+export type RedirectWhitelist = typeof redirectWhitelist.$inferSelect;
+export type InsertRedirectWhitelist = typeof redirectWhitelist.$inferInsert;
+
+// Trusted domain redirect pairs
+export const trustedRedirectPairs = mysqlTable('trusted_redirect_pairs', {
+  id: int('id').primaryKey().autoincrement(),
+  fromDomain: varchar('from_domain', { length: 255 }).notNull(),
+  toDomain: varchar('to_domain', { length: 255 }).notNull(),
+  isActive: int('is_active').default(1),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export type TrustedRedirectPair = typeof trustedRedirectPairs.$inferSelect;
+export type InsertTrustedRedirectPair = typeof trustedRedirectPairs.$inferInsert;
