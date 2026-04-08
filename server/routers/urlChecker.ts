@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
-import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs, createOCRAnalysis } from "../db";
+import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs, createOCRAnalysis, getDb } from "../db";
 import { getDeepSeekClient } from "../analyzers/deepseekEnhanced";
 import { validateAndNormalizeURL, extractAffiliateInfo, checkPhishingIndicators } from "../analyzers/urlAnalyzer";
 import { fetchCertificate, extractCertificateRisks } from "../utils/certificate";
@@ -12,6 +12,7 @@ import { queueOCRAnalysis } from "../jobs/ocrQueue";
 import { getRedisService } from "../services/redis";
 import { protectedProcedureWithConcurrency } from "../_core/trpc";
 import crypto from "crypto";
+import { TRPCError } from '@trpc/server';
 
 export const urlCheckerRouter = router({
   checkURL: protectedProcedureWithConcurrency
@@ -319,6 +320,27 @@ export const urlCheckerRouter = router({
         createdAt: check.createdAt,
       }));
       return generateHTMLReport(reportData);
+    }),
+
+  getCampaignTimeline: protectedProcedure
+    .input(z.object({ clusterId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const { clusterMemberships, urlChecks } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const members = await db
+        .select({
+          url: urlChecks.url,
+          riskScore: urlChecks.riskScore,
+          riskLevel: urlChecks.riskLevel,
+          createdAt: urlChecks.createdAt,
+        })
+        .from(clusterMemberships)
+        .innerJoin(urlChecks, eq(clusterMemberships.checkId, urlChecks.id))
+        .where(eq(clusterMemberships.clusterId, input.clusterId))
+        .orderBy(urlChecks.createdAt);
+      return members;
     }),
 });
 

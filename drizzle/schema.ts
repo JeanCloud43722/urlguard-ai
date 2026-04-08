@@ -171,3 +171,18 @@ export const adversarialTests = mysqlTable('adversarial_tests', {
 
 export type AdversarialTest = typeof adversarialTests.$inferSelect;
 export type InsertAdversarialTest = typeof adversarialTests.$inferInsert;
+
+// Webhooks table for notification configuration
+export const webhooks = mysqlTable('webhooks', {
+  id: int('id').autoincrement().primaryKey(),
+  url: varchar('url', { length: 512 }).notNull(),
+  eventType: varchar('eventType', { length: 50 }).notNull(), // 'campaign_detected', 'dangerous_url_detected'
+  threshold: int('threshold').default(5),
+  secret: varchar('secret', { length: 256 }),
+  isActive: int('isActive').default(1), // 0 = false, 1 = true
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type Webhook = typeof webhooks.$inferSelect;
+export type InsertWebhook = typeof webhooks.$inferInsert;
