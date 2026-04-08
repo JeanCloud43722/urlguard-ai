@@ -27,6 +27,7 @@ interface CheckResult {
   indicators: string[];
   confidence: number;
   createdAt: Date;
+  isPreliminary?: boolean;
 }
 
 export default function Home() {
@@ -66,6 +67,10 @@ export default function Home() {
 
   const checkURLMutation = trpc.urlChecker.checkURL.useMutation();
   const historyQuery = trpc.urlChecker.getHistory.useQuery({ limit: 10 }, { enabled: showHistory && isAuthenticated });
+  const getCheckByIdQuery = trpc.urlChecker.getCheckById.useQuery(
+    { id: result?.id || 0 },
+    { enabled: !!result && result.isPreliminary, refetchInterval: 2000 }
+  );
 
   const handleCheckURL = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,13 +86,30 @@ export default function Home() {
       setResult(res as CheckResult);
       setUrlInput("");
       setShowResultModal(true);
-      toast.success("URL analyzed successfully");
+      
+      // Show different toast based on whether result is preliminary
+      if (res.isPreliminary) {
+        toast.info("First analysis complete. Deep scan running...", { duration: 3000 });
+      } else {
+        toast.success("URL analyzed successfully");
+      }
     } catch (error) {
       toast.error((error as Error).message);
     } finally {
       setIsLoading(false);
     }
   };
+
+  // Update result when polling completes
+  useEffect(() => {
+    if (getCheckByIdQuery.data && result?.isPreliminary) {
+      const updatedResult = getCheckByIdQuery.data as CheckResult;
+      if (!updatedResult.isPreliminary) {
+        setResult(updatedResult);
+        toast.success("Deep analysis complete!", { duration: 2000 });
+      }
+    }
+  }, [getCheckByIdQuery.data, result?.isPreliminary]);
 
   const getRiskColor = (level: string) => {
     switch (level) {

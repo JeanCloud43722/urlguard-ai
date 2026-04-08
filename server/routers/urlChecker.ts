@@ -1,4 +1,4 @@
-import { z } from "zod";
+import z from "zod";
 import { protectedProcedure, router } from "../_core/trpc";
 import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs, createOCRAnalysis, getDb } from "../db";
 import { getDeepSeekClient } from "../analyzers/deepseekEnhanced";
@@ -84,6 +84,7 @@ export const urlCheckerRouter = router({
             confidence: 0.9,
             certificateInfo: { isSelfSigned: false, hasRisks: false },
             ocrQueued: false,
+            isPreliminary: false,
             createdAt: new Date(),
           };
           await redis.setAnalysisCache(urlHash, result, 86400);
@@ -104,6 +105,7 @@ export const urlCheckerRouter = router({
             confidence: 0.95,
             certificateInfo: { isSelfSigned: false, hasRisks: false },
             ocrQueued: false,
+            isPreliminary: false,
             createdAt: new Date(),
           };
           await redis.setAnalysisCache(urlHash, result, 86400);
@@ -127,136 +129,204 @@ export const urlCheckerRouter = router({
           }
         }
 
-        // 5. Analyze with DeepSeek using full context
-        const deepseekClient = getDeepSeekClient();
-        const deepseekAnalysis = await deepseekClient.analyzeWithFullContext(
-          validation.normalizedUrl,
-          certificateInfo,
-          [...localIndicators, ...certificateRisks],
-          affiliateInfo
-        );
+        // 5. Create preliminary result based on heuristics (immediate response <500ms)
+        const preliminaryResult = {
+          id: 0,
+          url: input.url,
+          normalizedUrl: validation.normalizedUrl,
+          riskScore: localIndicators.length > 0 ? 50 : 10,
+          riskLevel: localIndicators.length > 0 ? ('suspicious' as const) : ('safe' as const),
+          analysis: 'First analysis based on URL structure. Deeper analysis running in background...',
+          indicators: localIndicators,
+          affiliateInfo,
+          confidence: 0.6,
+          certificateInfo: { isSelfSigned: false, hasRisks: certificateRisks.length > 0 },
+          ocrQueued: false,
+          isPreliminary: true,
+          createdAt: new Date(),
+        };
 
-        // 6. Combine all indicators (heuristic + certificate + AI)
-        const allReasons = [...localIndicators, ...certificateRisks, ...deepseekAnalysis.phishingIndicators];
-
-        // 7. Create database record
+        // 5a. Create database record with preliminary data
         const urlCheckRecord = await createURLCheck({
           userId: ctx.user.id,
           url: input.url,
           normalizedUrl: validation.normalizedUrl,
-          riskScore: deepseekAnalysis.riskScore,
-          riskLevel: deepseekAnalysis.riskLevel,
-          phishingReasons: JSON.stringify(allReasons),
-          deepseekAnalysis: JSON.stringify(deepseekAnalysis),
+          riskScore: preliminaryResult.riskScore,
+          riskLevel: preliminaryResult.riskLevel,
+          phishingReasons: JSON.stringify(localIndicators),
+          deepseekAnalysis: JSON.stringify({}),
           affiliateInfo: JSON.stringify(affiliateInfo),
         });
 
-        // 7a. Save redirect chain to database
-        if (redirectChain && redirectChain.hops.length > 0) {
+        // 5b. Return preliminary result immediately
+        const resultWithId = { ...preliminaryResult, id: urlCheckRecord.id };
+
+        // 5c. Start DeepSeek analysis as background job (fire-and-forget)
+        const performDeepSeekAnalysis = async () => {
           try {
+            const deepseekClient = getDeepSeekClient();
+            const deepseekAnalysis = await deepseekClient.analyzeWithFullContext(
+              validation.normalizedUrl,
+              certificateInfo,
+              [...localIndicators, ...certificateRisks],
+              affiliateInfo
+            );
+
+            // Update database with final analysis
             const db = await getDb();
             if (db) {
-              const [chainResult] = await db.insert(redirectChains).values({
-                originalUrl: validation.normalizedUrl,
-                finalUrl: redirectChain.finalUrl,
-                statusCode: redirectChain.statusCode,
-                redirectCount: redirectChain.redirectCount,
-                isMalicious: redirectChain.isLikelyPhishing ? 1 : 0,
-                detectedAt: new Date(),
-              });
+              const { urlChecks } = await import('../../drizzle/schema');
+              const allReasons = [...localIndicators, ...certificateRisks, ...deepseekAnalysis.phishingIndicators];
               
-              for (let i = 0; i < redirectChain.hops.length; i++) {
-                const hop = redirectChain.hops[i];
-                await db.insert(redirectHops).values({
-                  chainId: (chainResult as any).insertId,
-                  hopOrder: i,
-                  fromUrl: hop.fromUrl,
-                  toUrl: hop.toUrl,
-                  statusCode: hop.statusCode,
-                  responseTimeMs: hop.responseTimeMs,
-                  detectedAt: new Date(),
+              await db.update(urlChecks).set({
+                riskScore: deepseekAnalysis.riskScore,
+                riskLevel: deepseekAnalysis.riskLevel,
+                phishingReasons: JSON.stringify(allReasons),
+                deepseekAnalysis: JSON.stringify(deepseekAnalysis),
+              }).where(eq(urlChecks.id, urlCheckRecord.id));
+
+              console.log(`[Progressive] Updated check ${urlCheckRecord.id} with DeepSeek analysis`);
+
+              // Save redirect chain if detected
+              if (redirectChain && redirectChain.hops.length > 0) {
+                try {
+                  const [chainResult] = await db.insert(redirectChains).values({
+                    originalUrl: validation.normalizedUrl,
+                    finalUrl: redirectChain.finalUrl,
+                    statusCode: redirectChain.statusCode,
+                    redirectCount: redirectChain.redirectCount,
+                    isMalicious: redirectChain.isLikelyPhishing ? 1 : 0,
+                    detectedAt: new Date(),
+                  });
+                  
+                  for (let i = 0; i < redirectChain.hops.length; i++) {
+                    const hop = redirectChain.hops[i];
+                    await db.insert(redirectHops).values({
+                      chainId: (chainResult as any).insertId,
+                      hopOrder: i,
+                      fromUrl: hop.fromUrl,
+                      toUrl: hop.toUrl,
+                      statusCode: hop.statusCode,
+                      responseTimeMs: hop.responseTimeMs,
+                      detectedAt: new Date(),
+                    });
+                  }
+                  console.log(`[Progressive] Saved redirect chain with ${redirectChain.hops.length} hops`);
+                } catch (error) {
+                  console.error('[Progressive] Failed to save redirect chain:', error);
+                }
+              }
+
+              // Enqueue screenshot job if dangerous
+              if (deepseekAnalysis.riskLevel === "dangerous") {
+                try {
+                  const processor = await getScreenshotJobProcessor();
+                  await processor.enqueueScreenshot({
+                    urlCheckId: urlCheckRecord.id,
+                    userId: ctx.user.id,
+                    url: validation.normalizedUrl,
+                    riskLevel: deepseekAnalysis.riskLevel,
+                    timestamp: Date.now(),
+                  });
+                  console.log(`[Progressive] Screenshot job enqueued for URL: ${validation.normalizedUrl}`);
+                } catch (error) {
+                  console.error("[Progressive] Failed to enqueue screenshot job:", error);
+                }
+              }
+
+              // Enqueue OCR analysis if suspicious/dangerous
+              if (deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious") {
+                try {
+                  await queueOCRAnalysis({
+                    checkId: urlCheckRecord.id,
+                    userId: ctx.user.id,
+                    screenshotBuffer: Buffer.from(''),
+                    domain: new URL(validation.normalizedUrl).hostname || '',
+                  });
+                  console.log(`[Progressive] OCR analysis job queued for check ${urlCheckRecord.id}`);
+                } catch (error) {
+                  console.error("[Progressive] Failed to queue OCR analysis:", error);
+                }
+              }
+
+              // Notify owner if dangerous
+              if (deepseekAnalysis.riskLevel === "dangerous") {
+                const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
+                await notifyOwner({
+                  title: "🚨 High-Risk Phishing URL Detected",
+                  content: `User ${ctx.user.name} detected a dangerous URL: ${validation.normalizedUrl}\n\nRisk Score: ${deepseekAnalysis.riskScore}/100\nConfidence: ${Math.round(deepseekAnalysis.confidence * 100)}%\n\nAnalysis: ${deepseekAnalysis.analysis}${certificateWarning}\n\nIndicators: ${allReasons.join(", ")}`,
                 });
               }
-              console.log(`[URLChecker] Saved redirect chain with ${redirectChain.hops.length} hops`);
+
+              // Cache final result
+              const finalResult = {
+                id: urlCheckRecord.id,
+                url: input.url,
+                normalizedUrl: validation.normalizedUrl,
+                riskScore: deepseekAnalysis.riskScore,
+                riskLevel: deepseekAnalysis.riskLevel,
+                analysis: deepseekAnalysis.analysis,
+                indicators: allReasons,
+                affiliateInfo,
+                confidence: deepseekAnalysis.confidence,
+                certificateInfo: {
+                  isSelfSigned: certificateInfo.subject && certificateInfo.issuer && JSON.stringify(certificateInfo.subject) === JSON.stringify(certificateInfo.issuer),
+                  hasRisks: certificateRisks.length > 0,
+                },
+                ocrQueued: deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious",
+                isPreliminary: false,
+                createdAt: new Date(),
+              };
+              await redis.setAnalysisCache(urlHash, finalResult, 86400);
+              console.log(`[Progressive] Cached final result for ${validation.normalizedUrl}`);
             }
           } catch (error) {
-            console.error('[URLChecker] Failed to save redirect chain:', error);
+            console.error('[Progressive] DeepSeek analysis failed:', error);
           }
-        }
-
-        // 8. Enqueue screenshot job if dangerous
-        if (deepseekAnalysis.riskLevel === "dangerous") {
-          try {
-            const processor = await getScreenshotJobProcessor();
-            await processor.enqueueScreenshot({
-              urlCheckId: urlCheckRecord.id,
-              userId: ctx.user.id,
-              url: validation.normalizedUrl,
-              riskLevel: deepseekAnalysis.riskLevel,
-              timestamp: Date.now(),
-            });
-            console.log(`[URLChecker] Screenshot job enqueued for URL: ${validation.normalizedUrl}`);
-          } catch (error) {
-            console.error("[URLChecker] Failed to enqueue screenshot job:", error);
-            // Don't fail the main analysis if screenshot job fails
-          }
-        }
-
-        // 8b. Enqueue OCR analysis if screenshot was captured
-        if (deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious") {
-          try {
-            // Queue OCR analysis for screenshot (will be processed asynchronously)
-            // Note: In production, pass actual screenshot buffer from storage
-            await queueOCRAnalysis({
-              checkId: urlCheckRecord.id,
-              userId: ctx.user.id,
-              screenshotBuffer: Buffer.from(''), // Will be populated from screenshot storage
-              domain: new URL(validation.normalizedUrl).hostname || '',
-            });
-            console.log(`[URLChecker] OCR analysis job queued for check ${urlCheckRecord.id}`);
-          } catch (error) {
-            console.error("[URLChecker] Failed to queue OCR analysis:", error);
-            // Don't fail if OCR queueing fails
-          }
-        }
-
-        // 9. Notify owner if dangerous
-        if (deepseekAnalysis.riskLevel === "dangerous") {
-          const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
-          await notifyOwner({
-            title: "🚨 High-Risk Phishing URL Detected",
-            content: `User ${ctx.user.name} detected a dangerous URL: ${validation.normalizedUrl}\n\nRisk Score: ${deepseekAnalysis.riskScore}/100\nConfidence: ${Math.round(deepseekAnalysis.confidence * 100)}%\n\nAnalysis: ${deepseekAnalysis.analysis}${certificateWarning}\n\nIndicators: ${allReasons.join(", ")}`,
-          });
-        }
-
-        // 9. Return result
-        const result = {
-          id: urlCheckRecord.id,
-          url: input.url,
-          normalizedUrl: validation.normalizedUrl,
-          riskScore: deepseekAnalysis.riskScore,
-          riskLevel: deepseekAnalysis.riskLevel,
-          analysis: deepseekAnalysis.analysis,
-          indicators: allReasons,
-          affiliateInfo,
-          confidence: deepseekAnalysis.confidence,
-          certificateInfo: {
-            isSelfSigned: certificateInfo.subject && certificateInfo.issuer && JSON.stringify(certificateInfo.subject) === JSON.stringify(certificateInfo.issuer),
-            hasRisks: certificateRisks.length > 0,
-          },
-          ocrQueued: deepseekAnalysis.riskLevel === "dangerous" || deepseekAnalysis.riskLevel === "suspicious",
-          createdAt: new Date(),
         };
 
-        // 9b. Cache result for 24 hours
-        await redis.setAnalysisCache(urlHash, result, 86400);
-        console.log(`[Cache] Stored ${validation.normalizedUrl}`);
+        // Start background analysis without awaiting
+        performDeepSeekAnalysis().catch(err => console.error('[Progressive] Background analysis error:', err));
 
-        return result;
+        // Return preliminary result immediately
+        return resultWithId;
       } catch (error) {
         console.error("URL check error:", error);
         throw new Error(`Failed to analyze URL: ${(error as Error).message}`);
       }
+    }),
+
+  getCheckById: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input, ctx }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      
+      const { urlChecks } = await import('../../drizzle/schema');
+      const result = await db
+        .select()
+        .from(urlChecks)
+        .where(eq(urlChecks.id, input.id))
+        .limit(1);
+      
+      if (!result.length) return null;
+      
+      const check = result[0];
+      return {
+        id: check.id,
+        url: check.url,
+        normalizedUrl: check.normalizedUrl,
+        riskScore: check.riskScore,
+        riskLevel: check.riskLevel,
+        analysis: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis).analysis : 'Preliminary analysis - waiting for deep scan...',
+        indicators: check.phishingReasons ? JSON.parse(check.phishingReasons) : [],
+        affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo) : {},
+        confidence: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis).confidence : 0.6,
+        certificateInfo: { isSelfSigned: false, hasRisks: false },
+        ocrQueued: false,
+        isPreliminary: !check.deepseekAnalysis || check.deepseekAnalysis === '{}' || check.deepseekAnalysis === 'null',
+        createdAt: check.createdAt,
+      };
     }),
 
   getHistory: protectedProcedure
@@ -279,19 +349,6 @@ export const urlCheckerRouter = router({
         screenshotKey: check.screenshotKey,
       }));
     }),
-
-
-
-
-
-
-
-
-
-
-
-
-
 
   startBatchCheck: protectedProcedure
     .input(z.object({ urls: z.array(z.string()).min(1).max(50) }))

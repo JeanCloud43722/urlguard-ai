@@ -35,6 +35,7 @@ export interface ResultModalProps {
     };
     screenshotUrl?: string;
     ocrQueued?: boolean;
+    isPreliminary?: boolean;
     createdAt: Date;
   };
   autoCloseDuration?: number;
@@ -208,12 +209,27 @@ const ResultModal: React.FC<ResultModalProps> = ({
           {/* Header */}
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-2xl font-bold text-slate-100">Analysis Result</h2>
+              <div className="flex items-center gap-3">
+                <h2 className="text-2xl font-bold text-slate-100">Analysis Result</h2>
+                {result.isPreliminary && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-yellow-500/20 text-yellow-300 text-xs font-semibold animate-pulse border border-yellow-500/30">
+                    ⏳ First Scan (Heuristic)
+                  </span>
+                )}
+                {!result.isPreliminary && result.riskScore > 0 && (
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-lg bg-green-500/20 text-green-300 text-xs font-semibold border border-green-500/30">
+                    ✅ Deep Analysis Complete
+                  </span>
+                )}
+              </div>
               <div className={`px-4 py-2 rounded-lg font-semibold text-lg ${riskBgColor} ${riskTextColor}`}>
                 {result.riskScore}%
               </div>
             </div>
             <p className="text-sm text-slate-400 break-all">{result.url}</p>
+            {result.isPreliminary && (
+              <p className="text-xs text-yellow-400 mt-2">🔄 Deeper analysis is running in the background. Results will update automatically...</p>
+            )}
           </div>
 
           {/* Risk Level Badge */}
@@ -268,6 +284,13 @@ const ResultModal: React.FC<ResultModalProps> = ({
             {/* Overview Tab */}
             {activeTab === 'overview' && (
               <div>
+                {/* Preliminary Analysis Warning */}
+                {result.isPreliminary && (
+                  <div className="mb-6 p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/30">
+                    <p className="text-sm text-yellow-300"><strong>🔄 First analysis based on URL structure.</strong> Deep AI analysis is running in the background and will update within 5-10 seconds.</p>
+                  </div>
+                )}
+
                 {/* Main Analysis */}
                 {result.analysis && (
                   <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
