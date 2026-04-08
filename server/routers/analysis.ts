@@ -9,6 +9,9 @@ import { getDb } from '../db';
 import { browserFingerprints, phishingClusters, clusterMemberships, urlChecks } from '../../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
+import { adminProcedure } from '../_core/trpc';
+import { getRedTeamAgent } from '../queues/redTeamAgent';
+import { adversarialTests } from '../../drizzle/schema';
 
 export const analysisRouter = router({
   /**
@@ -260,6 +263,77 @@ export const analysisRouter = router({
         throw new TRPCError({
           code: 'INTERNAL_SERVER_ERROR',
           message: 'Failed to get campaign stats',
+        });
+      }
+    }),
+
+  /**
+   * Trigger red-team adversarial testing on a cluster (admin only)
+   */
+  triggerRedTeamTest: adminProcedure
+    .input(z.object({ clusterId: z.number(), iterations: z.number().default(5).optional() }))
+    .mutation(async ({ input }) => {
+      try {
+        const agent = await getRedTeamAgent();
+        const job = await agent.enqueueRedTeamTest(input.clusterId, 'all', input.iterations || 5);
+
+        if (!job) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Failed to enqueue red-team test',
+          });
+        }
+
+        return {
+          jobId: job.id,
+          clusterId: input.clusterId,
+          message: 'Red-team adversarial test enqueued',
+          status: 'queued',
+        };
+      } catch (error) {
+        console.error('[tRPC] Error triggering red-team test:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to trigger red-team test',
+        });
+      }
+    }),
+
+  /**
+   * Get adversarial test results for a cluster
+   */
+  getAdversarialResults: publicProcedure
+    .input(z.object({ clusterId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const results = await db
+          .select()
+          .from(adversarialTests)
+          .where(eq(adversarialTests.clusterId, input.clusterId))
+          .orderBy(adversarialTests.createdAt)
+          .limit(10);
+
+        return results.map((r) => ({
+          id: r.id,
+          clusterId: r.clusterId,
+          mutations: r.mutations ? JSON.parse(r.mutations) : [],
+          undetectedCount: r.undetectedCount,
+          totalTested: r.totalTested,
+          createdAt: r.createdAt,
+        }));
+      } catch (error) {
+        console.error('[tRPC] Error getting adversarial results:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to get adversarial results',
         });
       }
     }),

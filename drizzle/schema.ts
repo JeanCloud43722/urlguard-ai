@@ -43,6 +43,8 @@ export const urlChecks = mysqlTable("url_checks", {
   ocrProcessedAt: timestamp("ocrProcessedAt"),
   metadataProcessedAt: timestamp("metadataProcessedAt"),
   xmlProcessedAt: timestamp("xmlProcessedAt"),
+  utmData: text("utmData"), // JSON: {source, medium, campaign, term, content}
+  referrer: text("referrer"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -153,3 +155,16 @@ export const urlChecksExtended = {
   fingerprintProcessedAt: timestamp('fingerprintProcessedAt'),
   clusterProcessedAt: timestamp('clusterProcessedAt'),
 };
+
+// Adversarial Test Results table for red-team analysis
+export const adversarialTests = mysqlTable('adversarial_tests', {
+  id: int('id').autoincrement().primaryKey(),
+  clusterId: int('clusterId').notNull(),
+  mutations: text('mutations').notNull(), // JSON array of mutation objects
+  undetectedCount: int('undetectedCount').default(0),
+  totalTested: int('totalTested').default(0),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export type AdversarialTest = typeof adversarialTests.$inferSelect;
+export type InsertAdversarialTest = typeof adversarialTests.$inferInsert;

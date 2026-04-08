@@ -14,6 +14,14 @@ export interface StructuredMetadata {
   jsonLd: any[];
   externalLinks: string[];
   brandMentions: string[];
+  utm?: {
+    source: string | null;
+    medium: string | null;
+    campaign: string | null;
+    term: string | null;
+    content: string | null;
+  };
+  referrer?: string | null;
 }
 
 export interface XmlData {
@@ -27,6 +35,19 @@ export async function extractStructuredData(html: string, url: string): Promise<
     const dom = new JSDOM(html);
     const doc = dom.window.document;
 
+    // Extract UTM parameters from URL
+    const urlObj = new URL(url);
+    const utmData = {
+      source: urlObj.searchParams.get('utm_source'),
+      medium: urlObj.searchParams.get('utm_medium'),
+      campaign: urlObj.searchParams.get('utm_campaign'),
+      term: urlObj.searchParams.get('utm_term'),
+      content: urlObj.searchParams.get('utm_content'),
+    };
+
+    // Get referrer from document (if available)
+    const referrer = doc.referrer || null;
+
     const metadata: StructuredMetadata = {
       title: doc.querySelector('title')?.textContent || null,
       description: doc.querySelector('meta[name="description"]')?.getAttribute('content') || null,
@@ -35,6 +56,8 @@ export async function extractStructuredData(html: string, url: string): Promise<
       jsonLd: [],
       externalLinks: [],
       brandMentions: [],
+      utm: utmData,
+      referrer,
     };
 
     // Extract JSON-LD
