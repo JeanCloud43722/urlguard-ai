@@ -32,7 +32,7 @@ const SUSPICIOUS_PATTERNS = [
   /login|verify|secure|account|signin|password/i,        // Sensitive keywords
 ];
 
-export async function detectRedirectChain(url: string, maxHops = 10): Promise<RedirectChain> {
+export async function detectRedirectChain(url: string, maxHops = 3): Promise<RedirectChain> {
   const hops: RedirectHop[] = [];
   let currentUrl = url;
   let finalStatusCode = 0;
@@ -43,7 +43,7 @@ export async function detectRedirectChain(url: string, maxHops = 10): Promise<Re
       const response = await axios.get(currentUrl, {
         maxRedirects: 0,           // Do NOT auto-follow
         validateStatus: (status) => status >= 200 && status < 400,
-        timeout: 5000,
+        timeout: 2000,
         headers: {
           'User-Agent': 'URLGuard-Security-Scanner/1.0',
         },
@@ -71,8 +71,9 @@ export async function detectRedirectChain(url: string, maxHops = 10): Promise<Re
       currentUrl = nextUrl;
       
     } catch (error) {
-      console.error(`[RedirectDetector] Failed at hop ${hopCount} for ${currentUrl}:`, error);
-      break;
+        console.error(`[RedirectDetector] Failed at hop ${hopCount} for ${currentUrl}:`, error);
+        // Early exit on timeout or connection error
+        break;
     }
   }
   

@@ -28,29 +28,29 @@ export const urlCheckerRouter = router({
           throw new Error(validation.error || "Invalid URL");
         }
 
-        // 1a. Detect redirect chain
-        let redirectChain = null;
-        let analyzedUrl = validation.normalizedUrl;
-        try {
-          redirectChain = await detectRedirectChain(validation.normalizedUrl, 5);
-          analyzedUrl = redirectChain.finalUrl;
-          console.log(`[Redirect] ${validation.normalizedUrl} -> ${redirectChain.redirectCount} hops -> ${analyzedUrl}`);
-          if (redirectChain.isLikelyPhishing && redirectChain.redirectCount > 0) {
-            console.warn(`[Redirect] Suspicious redirect chain detected for ${validation.normalizedUrl}`);
-          }
-        } catch (redirectError) {
-          console.error(`[Redirect] Failed to detect redirects:`, redirectError);
-        }
-
-        // 1b. Check Redis cache
+        // 1a. Check Redis cache FIRST (before redirect detection)
         const redis = getRedisService();
         const urlHash = crypto.createHash('sha256').update(validation.normalizedUrl).digest('hex');
-        const cacheKey = `url:${urlHash}`;
         const cached = await redis.getAnalysisCache(urlHash);
         if (cached) {
           console.log(`[Cache] HIT for ${validation.normalizedUrl}`);
           return cached;
         }
+
+        // 1b. Detect redirect chain (only if not cached)
+        let redirectChain = null;
+        let analyzedUrl = validation.normalizedUrl;
+        try {
+          redirectChain = await detectRedirectChain(validation.normalizedUrl);
+          analyzedUrl = redirectChain.finalUrl;
+          if (redirectChain.redirectCount > 0) {
+            console.log(`[Redirect] ${redirectChain.redirectCount} hops detected`);
+          }
+        } catch (redirectError) {
+          console.error(`[Redirect] Detection failed`);
+        }
+
+
 
         // 2. Extract affiliate info
         const affiliateInfo = extractAffiliateInfo(validation.normalizedUrl);
@@ -58,18 +58,21 @@ export const urlCheckerRouter = router({
         // 3. Check for local phishing indicators
         const localIndicators = checkPhishingIndicators(validation.normalizedUrl);
 
-        // 3b. Heuristic early-exit for obvious URLs
+        // 3b. Aggressive heuristic early-exit for obvious URLs
         const isObviouslySafe = localIndicators.length === 0 && 
-          (validation.domain.endsWith('.com') || validation.domain.endsWith('.org') || validation.domain.endsWith('.edu')) &&
+          !redirectChain?.isLikelyPhishing &&
+          (validation.domain.endsWith('.com') || validation.domain.endsWith('.org') || validation.domain.endsWith('.edu') || validation.domain.endsWith('.gov') || validation.domain.endsWith('.net')) &&
           !validation.domain.includes('login') && 
           !validation.domain.includes('verify') &&
           !validation.domain.includes('secure') &&
           !validation.domain.includes('confirm') &&
-          !validation.domain.includes('update');
+          !validation.domain.includes('update') &&
+          !validation.domain.includes('account') &&
+          !validation.domain.includes('signin');
 
         const isObviouslyDangerous = localIndicators.some(i => 
           i.includes('IP address') || i.includes('.tk') || i.includes('.ml') || i.includes('.ga') || i.includes('.cf')
-        );
+        ) || redirectChain?.isLikelyPhishing;
 
         if (isObviouslySafe) {
           const result = {
@@ -88,7 +91,6 @@ export const urlCheckerRouter = router({
             createdAt: new Date(),
           };
           await redis.setAnalysisCache(urlHash, result, 86400);
-          console.log(`[Cache] Stored (heuristic safe) ${validation.normalizedUrl}`);
           return result;
         }
 
@@ -99,7 +101,7 @@ export const urlCheckerRouter = router({
             normalizedUrl: validation.normalizedUrl,
             riskScore: 90,
             riskLevel: 'dangerous' as const,
-            analysis: 'Obvious phishing indicators detected (IP address or known malicious TLD).',
+            analysis: 'Dangerous URL detected.',
             indicators: localIndicators,
             affiliateInfo,
             confidence: 0.95,
@@ -109,7 +111,6 @@ export const urlCheckerRouter = router({
             createdAt: new Date(),
           };
           await redis.setAnalysisCache(urlHash, result, 86400);
-          console.log(`[Cache] Stored (heuristic dangerous) ${validation.normalizedUrl}`);
           return result;
         }
 

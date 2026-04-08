@@ -34,14 +34,14 @@ export class EnhancedDeepSeekClient {
 
   constructor(
     retryConfig: DeepSeekRetryConfig = {
-      maxRetries: 2,
-      initialDelayMs: 500,
-      maxDelayMs: 5000,
+      maxRetries: 1,
+      initialDelayMs: 200,
+      maxDelayMs: 2000,
       backoffMultiplier: 1.5,
     },
     timeoutConfig: DeepSeekTimeoutConfig = {
-      shortTimeout: 5000,
-      longTimeout: 15000,
+      shortTimeout: 3000,
+      longTimeout: 8000,
     }
   ) {
     this.retryConfig = retryConfig;

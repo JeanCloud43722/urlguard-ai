@@ -26,7 +26,7 @@ export interface CertificateInfo {
 export async function fetchCertificate(
   hostname: string,
   port: number = 443,
-  timeout: number = 5000
+  timeout: number = 2000
 ): Promise<CertificateInfo> {
   // Check Redis cache first
   try {
@@ -101,7 +101,7 @@ export async function fetchCertificate(
       resolved = true;
 
       const certInfo = {
-        error: `Certificate fetch error: ${error.message}`,
+        error: "Certificate fetch error",
       };
       
       // Cache error for 5 minutes
@@ -118,10 +118,9 @@ export async function fetchCertificate(
     socket.on("timeout", async () => {
       if (resolved) return;
       resolved = true;
-
       socket.destroy();
       const certInfo = {
-        error: "Certificate fetch timeout",
+        error: "Certificate timeout",
       };
       
       // Cache error for 5 minutes
@@ -135,9 +134,12 @@ export async function fetchCertificate(
       resolve(certInfo);
     });
 
-    // Set timeout
+    // Set timeout with early exit
     socket.setTimeout(timeout, () => {
-      socket.destroy();
+      if (!resolved) {
+        resolved = true;
+        socket.destroy();
+      }
     });
   });
 }
