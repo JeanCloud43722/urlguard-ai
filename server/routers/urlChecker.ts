@@ -342,6 +342,67 @@ export const urlCheckerRouter = router({
         .orderBy(urlChecks.createdAt);
       return members;
     }),
+
+  getClusterInfo: protectedProcedure
+    .input(z.object({ clusterId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const { phishingClusters } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const result = await db
+        .select()
+        .from(phishingClusters)
+        .where(eq(phishingClusters.id, input.clusterId))
+        .limit(1);
+      return result[0] || null;
+    }),
+
+  exportCampaign: protectedProcedure
+    .input(z.object({
+      clusterId: z.number(),
+      format: z.enum(['json', 'csv', 'html']).default('json'),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      const { phishingClusters, clusterMemberships, urlChecks } = await import('../../drizzle/schema');
+      const { eq } = await import('drizzle-orm');
+      const { storagePut } = await import('../storage');
+      
+      const cluster = await db.select().from(phishingClusters).where(eq(phishingClusters.id, input.clusterId)).limit(1);
+      if (!cluster.length) throw new TRPCError({ code: 'NOT_FOUND', message: 'Cluster not found' });
+      
+      const members = await db
+        .select()
+        .from(clusterMemberships)
+        .innerJoin(urlChecks, eq(clusterMemberships.checkId, urlChecks.id))
+        .where(eq(clusterMemberships.clusterId, input.clusterId))
+        .orderBy(urlChecks.createdAt);
+      
+      let content = '';
+      let mimeType = '';
+      let filename = `campaign-${input.clusterId}-${Date.now()}`;
+      
+      if (input.format === 'json') {
+        content = JSON.stringify({ cluster: cluster[0], members, exportedAt: new Date() }, null, 2);
+        mimeType = 'application/json';
+        filename += '.json';
+      } else if (input.format === 'csv') {
+        const rows = members.map((m: any) => [m.url_checks.url, m.url_checks.riskScore, m.url_checks.riskLevel, m.url_checks.createdAt]);
+        content = ['URL,Risk Score,Risk Level,Discovered At', ...rows.map((r: any) => r.join(','))].join('\n');
+        mimeType = 'text/csv';
+        filename += '.csv';
+      } else {
+        const rows = members.map((m: any) => `<tr><td>${m.url_checks.url}</td><td>${m.url_checks.riskScore}</td><td>${m.url_checks.riskLevel}</td><td>${m.url_checks.createdAt}</td></tr>`).join('');
+        content = `<html><head><style>table{border-collapse:collapse}th,td{border:1px solid #ddd;padding:8px}</style></head><body><h1>Campaign ${cluster[0].clusterName}</h1><table><tr><th>URL</th><th>Risk Score</th><th>Risk Level</th><th>Discovered</th></tr>${rows}</table></body></html>`;
+        mimeType = 'text/html';
+        filename += '.html';
+      }
+      
+      const { url } = await storagePut(`exports/${filename}`, content, mimeType);
+      return { downloadUrl: url };
+    }),
 });
 
 /**

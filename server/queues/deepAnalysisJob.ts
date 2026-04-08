@@ -8,8 +8,9 @@ import { getRedisService } from '../services/redis';
 import { extractStructuredData, extractXmlData } from '../services/structuredData';
 import { getDb } from '../db';
 import { urlChecks, phishingClusters, clusterMemberships } from '../../drizzle/schema';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { getPolymorphicDetectionService } from '../services/polymorphicDetection';
+import { checkCampaignThreshold } from '../services/webhookNotifier';
 
 const DEEP_ANALYSIS_QUEUE = 'deep-analysis-queue';
 
@@ -153,6 +154,22 @@ export class DeepAnalysisProcessor {
             addedAt: new Date(),
           });
           console.log(`[DeepAnalysis] Added URL to cluster ${clusterId} with ${clusterSimilarity}% similarity`);
+          
+          // Get current member count for this cluster
+          const memberCountResult = await db
+            .select({ count: sql<number>`COUNT(*)` })
+            .from(clusterMemberships)
+            .where(eq(clusterMemberships.clusterId, clusterRecord[0].id));
+          const memberCount = memberCountResult[0]?.count || 0;
+          
+          // Trigger webhook if threshold reached (default 5)
+          try {
+            await checkCampaignThreshold(clusterRecord[0].id, memberCount, 5);
+            console.log(`[DeepAnalysis] Webhook check completed for cluster ${clusterRecord[0].id} with ${memberCount} members`);
+          } catch (webhookError) {
+            console.error(`[DeepAnalysis] Webhook notification failed:`, webhookError);
+            // Don't throw - webhook failures should not block cluster processing
+          }
         }
       } catch (clusterError) {
         console.error(`[DeepAnalysis] Clustering failed for ${url}:`, clusterError);
