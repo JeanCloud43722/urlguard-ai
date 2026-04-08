@@ -37,6 +37,12 @@ export const urlChecks = mysqlTable("url_checks", {
   affiliateInfo: text("affiliateInfo"), // JSON
   screenshotUrl: text("screenshotUrl"),
   screenshotKey: text("screenshotKey"),
+  ocrExtractedText: text("ocrExtractedText"),
+  structuredMetadata: text("structuredMetadata"),
+  xmlData: text("xmlData"),
+  ocrProcessedAt: timestamp("ocrProcessedAt"),
+  metadataProcessedAt: timestamp("metadataProcessedAt"),
+  xmlProcessedAt: timestamp("xmlProcessedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

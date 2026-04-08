@@ -11,6 +11,7 @@ import { getS3ScreenshotService } from '../services/s3Screenshot';
 import { getDb } from '../db';
 import { screenshots, urlChecks } from '../../drizzle/schema';
 import { eq } from 'drizzle-orm';
+import { getDeepAnalysisProcessor } from './deepAnalysisJob';
 
 export interface ScreenshotJobData {
   urlCheckId: number;
@@ -43,6 +44,8 @@ class ScreenshotJobProcessor {
   private worker: Worker<ScreenshotJobData, ScreenshotJobResult> | null = null;
   private playwrightService = getPlaywrightService();
   private s3Service = getS3ScreenshotService();
+
+
 
   constructor() {
     this.queue = new Queue(QUEUE_NAME, QUEUE_OPTIONS);
@@ -145,7 +148,20 @@ class ScreenshotJobProcessor {
         3 // retries
       );
 
-      // Update database with screenshot URL
+      // Run OCR on screenshot buffer
+      let ocrText: string | null = null;
+      try {
+        const { createWorker } = await import('tesseract.js');
+        const worker = await createWorker('eng');
+        const { data } = await worker.recognize(screenshotResult.buffer);
+        ocrText = data.text.substring(0, 5000); // Limit to 5000 chars
+        await worker.terminate();
+        console.log(`[ScreenshotJob] OCR completed for ${url}`);
+      } catch (ocrError) {
+        console.error(`[ScreenshotJob] OCR failed for ${url}:`, ocrError);
+      }
+
+      // Update database with screenshot URL and OCR text
       const db = await getDb();
       if (db) {
         await db
@@ -153,6 +169,8 @@ class ScreenshotJobProcessor {
           .set({
             screenshotUrl: s3Result.url,
             screenshotKey: s3Result.key,
+            ocrExtractedText: ocrText,
+            ocrProcessedAt: new Date(),
             updatedAt: new Date(),
           })
           .where(eq(urlChecks.id, urlCheckId));
@@ -165,6 +183,27 @@ class ScreenshotJobProcessor {
           captureTime: new Date(),
           expiresAt: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days
         });
+      }
+
+      // Fetch HTML and enqueue deep analysis job (async, non-blocking)
+      try {
+        // Note: For now, we skip HTML fetching to avoid double browser overhead
+        // In production, consider using a headless HTTP client instead
+        const htmlContent = ''; // Would be fetched here
+
+        if (htmlContent) {
+          const deepAnalysisProcessor = await getDeepAnalysisProcessor();
+          await deepAnalysisProcessor.enqueueDeepAnalysis({
+            urlCheckId,
+            url,
+            html: htmlContent,
+            runDeepReanalysis: false,
+            ocrText: ocrText || undefined,
+          });
+          console.log(`[ScreenshotJob] Deep analysis job enqueued for ${url}`);
+        }
+      } catch (htmlError) {
+        console.error(`[ScreenshotJob] Failed to fetch HTML for ${url}:`, htmlError);
       }
 
       console.log(`[ScreenshotJob] Job completed successfully: ${s3Result.url}`);

@@ -15,6 +15,13 @@
       "when": 1774097206491,
       "tag": "0001_natural_war_machine",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1775679544553,
+      "tag": "0002_strong_prima",
+      "breakpoints": true
     }
   ]
 }

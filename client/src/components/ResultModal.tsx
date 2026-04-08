@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Loader } from 'lucide-react';
+import { trpc } from '../lib/trpc';
 import './ResultModal.css';
 
 export interface ResultModalProps {
   isOpen: boolean;
   onClose: () => void;
   result: {
+    id?: number;
     url: string;
     normalizedUrl: string;
     riskScore: number;
@@ -46,6 +48,57 @@ const ResultModal: React.FC<ResultModalProps> = ({
 }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(autoCloseDuration / 1000);
+  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml'>('overview');
+  const [ocrData, setOcrData] = useState<any>(null);
+  const [metadataData, setMetadataData] = useState<any>(null);
+  const [xmlData, setXmlData] = useState<any>(null);
+  const [isPolling, setIsPolling] = useState(false);
+
+  // Polling queries
+  const ocrQuery = trpc.screenshots.getOCR.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
+  const metadataQuery = trpc.screenshots.getStructuredMetadata.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
+  const xmlQuery = trpc.screenshots.getXmlData.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
+  // Start polling when modal opens
+  useEffect(() => {
+    if (!isOpen || !result.id) return;
+
+    setIsPolling(true);
+    const pollInterval = setInterval(async () => {
+      try {
+        const [ocr, metadata, xml] = await Promise.all([
+          ocrQuery.refetch(),
+          metadataQuery.refetch(),
+          xmlQuery.refetch(),
+        ]);
+
+        if (ocr.data) setOcrData(ocr.data);
+        if (metadata.data) setMetadataData(metadata.data);
+        if (xml.data) setXmlData(xml.data);
+
+        // Stop polling if all data is loaded
+        if (ocr.data && metadata.data && xml.data) {
+          setIsPolling(false);
+          clearInterval(pollInterval);
+        }
+      } catch (e) {
+        console.error('[ResultModal] Polling error:', e);
+      }
+    }, 2000);
+
+    return () => clearInterval(pollInterval);
+  }, [isOpen, result.id]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -91,6 +144,13 @@ const ResultModal: React.FC<ResultModalProps> = ({
         ? 'text-yellow-300'
         : 'text-red-300';
 
+  const tabClasses = (tab: string) =>
+    `px-4 py-2 text-sm font-medium transition-colors ${
+      activeTab === tab
+        ? 'text-white border-b-2 border-blue-400'
+        : 'text-slate-400 hover:text-slate-300 border-b-2 border-transparent'
+    }`;
+
   return (
     <>
       {/* Backdrop */}
@@ -103,12 +163,12 @@ const ResultModal: React.FC<ResultModalProps> = ({
 
       {/* Modal */}
       <div
-        className={`result-modal fixed top-1/2 left-1/2 z-50 w-full max-w-2xl transform transition-all duration-500 ${
+        className={`result-modal fixed top-1/2 left-1/2 z-50 w-full max-w-3xl transform transition-all duration-500 ${
           isClosing ? 'scale-95 opacity-0' : 'scale-100 opacity-100'
         }`}
         style={{ transform: isClosing ? 'translate(-50%, -50%) scale(0.95)' : 'translate(-50%, -50%) scale(1)' }}
       >
-        <div className={`relative bg-gradient-to-br ${riskColor} border border-white/10 rounded-2xl p-8 shadow-2xl backdrop-blur-xl`}>
+        <div className={`relative bg-gradient-to-br ${riskColor} border border-white/10 rounded-2xl p-8 shadow-2xl backdrop-blur-xl max-h-[80vh] overflow-y-auto`}>
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -130,13 +190,15 @@ const ResultModal: React.FC<ResultModalProps> = ({
 
           {/* Risk Level Badge */}
           <div className="mb-6 flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${
-              result.riskLevel === 'safe'
-                ? 'bg-green-400'
-                : result.riskLevel === 'suspicious'
-                  ? 'bg-yellow-400'
-                  : 'bg-red-400'
-            }`} />
+            <div
+              className={`w-3 h-3 rounded-full ${
+                result.riskLevel === 'safe'
+                  ? 'bg-green-400'
+                  : result.riskLevel === 'suspicious'
+                    ? 'bg-yellow-400'
+                    : 'bg-red-400'
+              }`}
+            />
             <span className={`text-sm font-semibold uppercase tracking-wide ${riskTextColor}`}>
               {result.riskLevel}
             </span>
@@ -145,60 +207,158 @@ const ResultModal: React.FC<ResultModalProps> = ({
             </span>
           </div>
 
-          {/* Main Analysis */}
-          {result.analysis && (
-            <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
-              <p className="text-sm text-slate-300 leading-relaxed">{result.analysis}</p>
-            </div>
-          )}
+          {/* Tabs */}
+          <div className="mb-6 flex gap-1 border-b border-white/10">
+            <button onClick={() => setActiveTab('overview')} className={tabClasses('overview')}>
+              Overview
+            </button>
+            <button onClick={() => setActiveTab('ocr')} className={tabClasses('ocr')}>
+              OCR {ocrData && '✓'}
+            </button>
+            <button onClick={() => setActiveTab('metadata')} className={tabClasses('metadata')}>
+              Metadata {metadataData && '✓'}
+            </button>
+            <button onClick={() => setActiveTab('xml')} className={tabClasses('xml')}>
+              XML {xmlData && '✓'}
+            </button>
+          </div>
 
-          {/* Indicators */}
-          {result.indicators.length > 0 && (
-            <div className="mb-6">
-              <h3 className="text-sm font-semibold text-slate-200 mb-3">Detected Indicators</h3>
-              <div className="flex flex-wrap gap-2">
-                {result.indicators.map((indicator, idx) => (
-                  <span
-                    key={idx}
-                    className="text-xs bg-red-500/20 text-red-300 px-3 py-1 rounded-lg border border-red-500/30"
-                  >
-                    {indicator}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Tab Content */}
+          <div className="mb-6">
+            {/* Overview Tab */}
+            {activeTab === 'overview' && (
+              <div>
+                {/* Main Analysis */}
+                {result.analysis && (
+                  <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
+                    <p className="text-sm text-slate-300 leading-relaxed">{result.analysis}</p>
+                  </div>
+                )}
 
-          {/* Certificate & Affiliate Info */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {result.certificateInfo && (
-              <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-xs text-slate-400 font-semibold mb-2">Certificate</p>
-                <p className="text-xs text-slate-300">
-                  {result.certificateInfo.isSelfSigned ? '⚠️ Self-Signed' : '✓ Valid'}
-                </p>
-                {result.certificateInfo.hasRisks && (
-                  <p className="text-xs text-red-300 mt-1">Risks detected</p>
+                {/* Indicators */}
+                {result.indicators.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-semibold text-slate-200 mb-3">Detected Indicators</h3>
+                    <div className="flex flex-wrap gap-2">
+                      {result.indicators.map((indicator, idx) => (
+                        <span
+                          key={idx}
+                          className="text-xs bg-red-500/20 text-red-300 px-3 py-1 rounded-lg border border-red-500/30"
+                        >
+                          {indicator}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Certificate & Affiliate Info */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  {result.certificateInfo && (
+                    <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                      <p className="text-xs text-slate-400 font-semibold mb-2">Certificate</p>
+                      <p className="text-xs text-slate-300">
+                        {result.certificateInfo.isSelfSigned ? '⚠️ Self-Signed' : '✓ Valid'}
+                      </p>
+                      {result.certificateInfo.hasRisks && (
+                        <p className="text-xs text-red-300 mt-1">Risks detected</p>
+                      )}
+                    </div>
+                  )}
+                  {result.affiliateInfo && (
+                    <div className="p-3 bg-white/5 rounded-lg border border-white/10">
+                      <p className="text-xs text-slate-400 font-semibold mb-2">Affiliate Info</p>
+                      <p className="text-xs text-slate-300 truncate">
+                        {result.affiliateInfo.name || result.affiliateInfo.domain || 'Detected'}
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Normalized URL */}
+                {result.normalizedUrl && result.normalizedUrl !== result.url && (
+                  <div className="mb-6 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
+                    <p className="text-xs text-slate-400 font-semibold mb-1">Normalized URL</p>
+                    <p className="text-xs text-blue-300 font-mono break-all">{result.normalizedUrl}</p>
+                  </div>
                 )}
               </div>
             )}
-            {result.affiliateInfo && (
-              <div className="p-3 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-xs text-slate-400 font-semibold mb-2">Affiliate Info</p>
-                <p className="text-xs text-slate-300 truncate">
-                  {result.affiliateInfo.name || result.affiliateInfo.domain || 'Detected'}
-                </p>
+
+            {/* OCR Tab */}
+            {activeTab === 'ocr' && (
+              <div>
+                {isPolling && !ocrData && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading OCR data...</span>
+                  </div>
+                )}
+                {ocrData?.ocrText && (
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Extracted Text</p>
+                    <p className="text-xs text-slate-300 whitespace-pre-wrap max-h-64 overflow-y-auto">
+                      {ocrData.ocrText.substring(0, 1000)}...
+                    </p>
+                    {ocrData.ocrProcessedAt && (
+                      <p className="text-xs text-slate-500 mt-2">
+                        Processed: {new Date(ocrData.ocrProcessedAt).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {!ocrData && !isPolling && (
+                  <p className="text-xs text-slate-400">No OCR data available</p>
+                )}
+              </div>
+            )}
+
+            {/* Metadata Tab */}
+            {activeTab === 'metadata' && (
+              <div>
+                {isPolling && !metadataData && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading metadata...</span>
+                  </div>
+                )}
+                {metadataData?.metadata && (
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 max-h-64 overflow-y-auto">
+                    <p className="text-xs text-slate-400 font-semibold mb-2">Page Metadata</p>
+                    <pre className="text-xs text-slate-300 font-mono">
+                      {JSON.stringify(metadataData.metadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {!metadataData && !isPolling && (
+                  <p className="text-xs text-slate-400">No metadata available</p>
+                )}
+              </div>
+            )}
+
+            {/* XML Tab */}
+            {activeTab === 'xml' && (
+              <div>
+                {isPolling && !xmlData && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Loading XML data...</span>
+                  </div>
+                )}
+                {xmlData?.xmlData && (
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10 max-h-64 overflow-y-auto">
+                    <p className="text-xs text-slate-400 font-semibold mb-2">XML Data (Sitemap/RSS)</p>
+                    <pre className="text-xs text-slate-300 font-mono">
+                      {JSON.stringify(xmlData.xmlData, null, 2)}
+                    </pre>
+                  </div>
+                )}
+                {!xmlData && !isPolling && (
+                  <p className="text-xs text-slate-400">No XML data available</p>
+                )}
               </div>
             )}
           </div>
-
-          {/* Normalized URL */}
-          {result.normalizedUrl && result.normalizedUrl !== result.url && (
-            <div className="mb-6 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
-              <p className="text-xs text-slate-400 font-semibold mb-1">Normalized URL</p>
-              <p className="text-xs text-blue-300 font-mono break-all">{result.normalizedUrl}</p>
-            </div>
-          )}
 
           {/* Auto-close Timer */}
           <div className="flex items-center justify-between pt-4 border-t border-white/10">

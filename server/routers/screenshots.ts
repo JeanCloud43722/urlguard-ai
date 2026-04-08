@@ -6,6 +6,9 @@
 import { z } from 'zod';
 import { protectedProcedure, publicProcedure, router } from '../_core/trpc';
 import { getScreenshotJobProcessor } from '../queues/screenshotJob';
+import { getDb } from '../db';
+import { urlChecks } from '../../drizzle/schema';
+import { eq } from 'drizzle-orm';
 import { TRPCError } from '@trpc/server';
 
 export const screenshotRouter = router({
@@ -80,6 +83,111 @@ export const screenshotRouter = router({
       };
     }
   }),
+
+  /**
+   * Get OCR extracted text
+   */
+  getOCR: publicProcedure
+    .input(z.object({ checkId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const result = await db
+          .select({ ocrText: urlChecks.ocrExtractedText, ocrProcessedAt: urlChecks.ocrProcessedAt })
+          .from(urlChecks)
+          .where(eq(urlChecks.id, input.checkId))
+          .limit(1);
+
+        return result[0] || null;
+      } catch (error) {
+        console.error('[tRPC] Error getting OCR data:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to get OCR data',
+        });
+      }
+    }),
+
+  /**
+   * Get structured metadata
+   */
+  getStructuredMetadata: publicProcedure
+    .input(z.object({ checkId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const result = await db
+          .select({ metadata: urlChecks.structuredMetadata, processedAt: urlChecks.metadataProcessedAt })
+          .from(urlChecks)
+          .where(eq(urlChecks.id, input.checkId))
+          .limit(1);
+
+        if (result[0]?.metadata) {
+          return {
+            metadata: JSON.parse(result[0].metadata),
+            processedAt: result[0].processedAt,
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('[tRPC] Error getting structured metadata:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to get structured metadata',
+        });
+      }
+    }),
+
+  /**
+   * Get XML data (sitemap/RSS)
+   */
+  getXmlData: publicProcedure
+    .input(z.object({ checkId: z.number() }))
+    .query(async ({ input }) => {
+      try {
+        const db = await getDb();
+        if (!db) {
+          throw new TRPCError({
+            code: 'INTERNAL_SERVER_ERROR',
+            message: 'Database connection failed',
+          });
+        }
+
+        const result = await db
+          .select({ xmlData: urlChecks.xmlData, processedAt: urlChecks.xmlProcessedAt })
+          .from(urlChecks)
+          .where(eq(urlChecks.id, input.checkId))
+          .limit(1);
+
+        if (result[0]?.xmlData) {
+          return {
+            xmlData: JSON.parse(result[0].xmlData),
+            processedAt: result[0].processedAt,
+          };
+        }
+        return null;
+      } catch (error) {
+        console.error('[tRPC] Error getting XML data:', error);
+        throw new TRPCError({
+          code: 'INTERNAL_SERVER_ERROR',
+          message: 'Failed to get XML data',
+        });
+      }
+    }),
 });
 
 export type ScreenshotRouter = typeof screenshotRouter;
