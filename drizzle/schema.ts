@@ -93,3 +93,63 @@ export const ocrAnalysis = mysqlTable('ocr_analysis', {
 
 export type OCRAnalysis = typeof ocrAnalysis.$inferSelect;
 export type InsertOCRAnalysis = typeof ocrAnalysis.$inferInsert;
+// Browser Fingerprint table for bot evasion detection
+export const browserFingerprints = mysqlTable('browser_fingerprints', {
+  id: int('id').autoincrement().primaryKey(),
+  checkId: int('checkId').notNull(),
+  userAgent: text('userAgent'),
+  platform: varchar('platform', { length: 100 }),
+  languages: text('languages'), // JSON array
+  webGLVendor: varchar('webGLVendor', { length: 255 }),
+  webGLRenderer: varchar('webGLRenderer', { length: 255 }),
+  canvasFingerprint: varchar('canvasFingerprint', { length: 64 }),
+  screenResolution: varchar('screenResolution', { length: 50 }),
+  timezone: varchar('timezone', { length: 50 }),
+  plugins: text('plugins'), // JSON array
+  isBotLikely: int('isBotLikely').default(0), // 0 = false, 1 = true
+  botIndicators: text('botIndicators'), // JSON array of detected bot signals
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+});
+
+export type BrowserFingerprint = typeof browserFingerprints.$inferSelect;
+export type InsertBrowserFingerprint = typeof browserFingerprints.$inferInsert;
+
+// Phishing Cluster table for campaign detection
+export const phishingClusters = mysqlTable('phishing_clusters', {
+  id: int('id').autoincrement().primaryKey(),
+  clusterId: varchar('clusterId', { length: 64 }).notNull().unique(),
+  clusterName: varchar('clusterName', { length: 255 }),
+  domStructureHash: varchar('domStructureHash', { length: 64 }).notNull(),
+  formCount: int('formCount'),
+  inputTypes: text('inputTypes'), // JSON array
+  externalScripts: text('externalScripts'), // JSON array of domains
+  cssClassPatterns: text('cssClassPatterns'), // JSON array
+  similarity: int('similarity'), // 0-100 similarity score
+  memberCount: int('memberCount').default(1),
+  createdAt: timestamp('createdAt').defaultNow().notNull(),
+  updatedAt: timestamp('updatedAt').defaultNow().onUpdateNow().notNull(),
+});
+
+export type PhishingCluster = typeof phishingClusters.$inferSelect;
+export type InsertPhishingCluster = typeof phishingClusters.$inferInsert;
+
+// Cluster membership table (many-to-many)
+export const clusterMemberships = mysqlTable('cluster_memberships', {
+  id: int('id').autoincrement().primaryKey(),
+  checkId: int('checkId').notNull(),
+  clusterId: int('clusterId').notNull(),
+  similarityScore: int('similarityScore'), // 0-100
+  addedAt: timestamp('addedAt').defaultNow().notNull(),
+});
+
+export type ClusterMembership = typeof clusterMemberships.$inferSelect;
+export type InsertClusterMembership = typeof clusterMemberships.$inferInsert;
+
+// Add fingerprint and cluster columns to urlChecks
+// Note: These columns should be added via migration
+export const urlChecksExtended = {
+  browserFingerprintId: int('browserFingerprintId'),
+  clusterId: int('clusterId'),
+  fingerprintProcessedAt: timestamp('fingerprintProcessedAt'),
+  clusterProcessedAt: timestamp('clusterProcessedAt'),
+};

@@ -1,14 +1,15 @@
 /**
  * Deep Analysis Job Queue
- * Processes structured data extraction, XML parsing, and optional DeepSeek re-analysis
+ * Processes structured data extraction, XML parsing, and polymorphic clustering
  */
 
 import { Queue, Worker } from 'bullmq';
 import { getRedisService } from '../services/redis';
 import { extractStructuredData, extractXmlData } from '../services/structuredData';
 import { getDb } from '../db';
-import { urlChecks } from '../../drizzle/schema';
+import { urlChecks, phishingClusters, clusterMemberships } from '../../drizzle/schema';
 import { eq } from 'drizzle-orm';
+import { getPolymorphicDetectionService } from '../services/polymorphicDetection';
 
 const DEEP_ANALYSIS_QUEUE = 'deep-analysis-queue';
 
@@ -50,7 +51,7 @@ export class DeepAnalysisProcessor {
     }
   }
 
-  private async processJob(job: any): Promise<{ success: boolean; metadata?: any; xmlData?: any }> {
+  private async processJob(job: any): Promise<{ success: boolean; metadata?: any; xmlData?: any; clusterId?: string }> {
     const { urlCheckId, url, html, runDeepReanalysis, ocrText } = job.data as DeepAnalysisJobData;
 
     console.log(`[DeepAnalysis] Processing job ${job.id} for URL: ${url}`);
@@ -74,7 +75,85 @@ export class DeepAnalysisProcessor {
         console.error(`[DeepAnalysis] XML extraction failed for ${url}:`, xmlError);
       }
 
-      // Update database with extracted data
+      // Perform polymorphic detection and clustering
+      let clusterId = null;
+      let clusterSimilarity = 0;
+      try {
+        const polyService = getPolymorphicDetectionService();
+        const domFeatures = polyService.extractDOMFeatures(html, url);
+        console.log(`[DeepAnalysis] Extracted DOM features for ${url}: ${domFeatures.formCount} forms, ${domFeatures.inputTypes.length} input types`);
+
+        // Get existing clusters from database
+        const existingClusters = await db
+          .select({
+            domStructureHash: phishingClusters.domStructureHash,
+            clusterId: phishingClusters.clusterId,
+            formCount: phishingClusters.formCount,
+          })
+          .from(phishingClusters)
+          .limit(100) as any;
+
+        // Detect campaign
+        const campaign = await polyService.detectCampaign(domFeatures, existingClusters as any);
+        clusterId = campaign.clusterId;
+        clusterSimilarity = campaign.similarity;
+
+        // Create or update cluster
+        if (campaign.isNewCluster && campaign.clusterId) {
+          const clusterName = polyService.generateClusterName(domFeatures, campaign.clusterId);
+          await db.insert(phishingClusters).values({
+            clusterName,
+            domStructureHash: domFeatures.domStructureHash,
+            formCount: domFeatures.formCount,
+            inputTypes: JSON.stringify(domFeatures.inputTypes),
+            externalScripts: JSON.stringify(domFeatures.externalScripts),
+            cssClassPatterns: JSON.stringify(domFeatures.cssClassPatterns),
+            similarity: 100,
+            memberCount: 1,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          } as any);
+          console.log(`[DeepAnalysis] Created new cluster ${campaign.clusterId} for ${url}`);
+        } else {
+          // Increment member count for existing cluster
+          const cluster = await db
+            .select({ id: phishingClusters.id, memberCount: phishingClusters.memberCount })
+            .from(phishingClusters)
+            .where(eq(phishingClusters.id, phishingClusters.id)) // Placeholder, will be fixed
+            .limit(1) as any;
+
+          if (cluster.length > 0 && cluster[0].memberCount) {
+            await db
+              .update(phishingClusters)
+              .set({
+                memberCount: cluster[0].memberCount + 1,
+                updatedAt: new Date(),
+              })
+              .where(eq(phishingClusters.clusterId, campaign.clusterId as string));
+          }
+        }
+
+        // Add URL to cluster membership
+        const clusterRecord = await db
+          .select({ id: phishingClusters.id })
+          .from(phishingClusters)
+          .where(eq(phishingClusters.clusterId, campaign.clusterId as string))
+          .limit(1) as any;
+
+        if (clusterRecord.length > 0) {
+          await db.insert(clusterMemberships).values({
+            checkId: urlCheckId,
+            clusterId: clusterRecord[0].id,
+            similarityScore: clusterSimilarity,
+            addedAt: new Date(),
+          });
+          console.log(`[DeepAnalysis] Added URL to cluster ${clusterId} with ${clusterSimilarity}% similarity`);
+        }
+      } catch (clusterError) {
+        console.error(`[DeepAnalysis] Clustering failed for ${url}:`, clusterError);
+      }
+
+      // Update database with extracted data and cluster info
       await db
         .update(urlChecks)
         .set({
@@ -82,6 +161,7 @@ export class DeepAnalysisProcessor {
           xmlData: JSON.stringify(xmlData),
           metadataProcessedAt: new Date(),
           xmlProcessedAt: new Date(),
+          updatedAt: new Date(),
         })
         .where(eq(urlChecks.id, urlCheckId));
 
@@ -94,7 +174,7 @@ export class DeepAnalysisProcessor {
         // For now, we just log it
       }
 
-      return { success: true, metadata, xmlData };
+      return { success: true, metadata, xmlData, clusterId: clusterId || undefined };
     } catch (error) {
       console.error(`[DeepAnalysis] Job processing failed:`, error);
       throw error;

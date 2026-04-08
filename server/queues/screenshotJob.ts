@@ -12,6 +12,8 @@ import { getDb } from '../db';
 import { screenshots, urlChecks } from '../../drizzle/schema';
 import { eq } from 'drizzle-orm';
 import { getDeepAnalysisProcessor } from './deepAnalysisJob';
+import { getBrowserFingerprintService } from '../services/browserFingerprint';
+import { browserFingerprints } from '../../drizzle/schema';
 
 export interface ScreenshotJobData {
   urlCheckId: number;
@@ -44,6 +46,7 @@ class ScreenshotJobProcessor {
   private worker: Worker<ScreenshotJobData, ScreenshotJobResult> | null = null;
   private playwrightService = getPlaywrightService();
   private s3Service = getS3ScreenshotService();
+  private fingerprintService = getBrowserFingerprintService();
 
 
 
@@ -129,13 +132,33 @@ class ScreenshotJobProcessor {
         throw new Error(`URL not reachable: ${url}`);
       }
 
-      // Capture screenshot
+      // Capture screenshot and collect browser fingerprint
+      let fingerprintData = null;
+      let page = null;
+
+      try {
+        // Get page context for fingerprinting
+        const browser = (this.playwrightService as any).browser;
+        if (browser) {
+          page = await browser.newPage();
+          await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
+          fingerprintData = await this.fingerprintService.collectFingerprint(page);
+          console.log(`[ScreenshotJob] Browser fingerprint collected for ${url}`);
+        }
+      } catch (fpError) {
+        console.error(`[ScreenshotJob] Fingerprinting failed for ${url}:`, fpError);
+      }
+
       const screenshotResult = await this.playwrightService.captureScreenshot({
         url,
         timeout: 30000,
         fullPage: true,
         waitForNavigation: true,
       });
+
+      if (page) {
+        await page.close();
+      }
 
       // Generate URL hash for S3 key
       const urlHash = createHash('sha256').update(url).digest('hex').substring(0, 16);
@@ -161,9 +184,36 @@ class ScreenshotJobProcessor {
         console.error(`[ScreenshotJob] OCR failed for ${url}:`, ocrError);
       }
 
-      // Update database with screenshot URL and OCR text
+      // Update database with screenshot URL, OCR text, and fingerprint
       const db = await getDb();
       if (db) {
+        // Store browser fingerprint if collected
+        let fingerprintId = null;
+        if (fingerprintData) {
+          try {
+            const fpResult = await db.insert(browserFingerprints).values({
+              checkId: urlCheckId,
+              userAgent: fingerprintData.userAgent,
+              platform: fingerprintData.platform,
+              languages: JSON.stringify(fingerprintData.languages),
+              webGLVendor: fingerprintData.webGLVendor,
+              webGLRenderer: fingerprintData.webGLRenderer,
+              canvasFingerprint: fingerprintData.canvasFingerprint,
+              screenResolution: fingerprintData.screenResolution,
+              timezone: fingerprintData.timezone,
+              plugins: JSON.stringify(fingerprintData.plugins),
+              isBotLikely: fingerprintData.isBotLikely ? 1 : 0,
+              botIndicators: JSON.stringify(fingerprintData.botIndicators),
+              createdAt: new Date(),
+            });
+            console.log(`[ScreenshotJob] Fingerprint stored for ${url}`);
+          } catch (fpDbError) {
+            console.error(`[ScreenshotJob] Failed to store fingerprint:`, fpDbError);
+          }
+        }
+
+        // Note: fingerprintProcessedAt column will be added in next migration
+
         await db
           .update(urlChecks)
           .set({

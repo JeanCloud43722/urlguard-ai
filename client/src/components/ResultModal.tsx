@@ -48,10 +48,12 @@ const ResultModal: React.FC<ResultModalProps> = ({
 }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(autoCloseDuration / 1000);
-  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml' | 'fingerprint' | 'cluster'>('overview');
   const [ocrData, setOcrData] = useState<any>(null);
   const [metadataData, setMetadataData] = useState<any>(null);
   const [xmlData, setXmlData] = useState<any>(null);
+  const [fingerprintData, setFingerprintData] = useState<any>(null);
+  const [clusterData, setClusterData] = useState<any>(null);
   const [isPolling, setIsPolling] = useState(false);
 
   // Polling queries
@@ -66,6 +68,16 @@ const ResultModal: React.FC<ResultModalProps> = ({
   );
 
   const xmlQuery = trpc.screenshots.getXmlData.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
+  const fingerprintQuery = trpc.analysis.getFingerprint.useQuery(
+    { checkId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
+  const clusterQuery = trpc.analysis.getCluster.useQuery(
     { checkId: result.id || 0 },
     { enabled: false, staleTime: 0 }
   );
@@ -221,6 +233,12 @@ const ResultModal: React.FC<ResultModalProps> = ({
             <button onClick={() => setActiveTab('xml')} className={tabClasses('xml')}>
               XML {xmlData && '✓'}
             </button>
+            <button onClick={() => setActiveTab('fingerprint')} className={tabClasses('fingerprint')}>
+              Fingerprint {fingerprintData && '✓'}
+            </button>
+            <button onClick={() => setActiveTab('cluster')} className={tabClasses('cluster')}>
+              Campaign {clusterData && '✓'}
+            </button>
           </div>
 
           {/* Tab Content */}
@@ -355,6 +373,90 @@ const ResultModal: React.FC<ResultModalProps> = ({
                 )}
                 {!xmlData && !isPolling && (
                   <p className="text-xs text-slate-400">No XML data available</p>
+                )}
+              </div>
+            )}
+
+            {/* Fingerprint Tab */}
+            {activeTab === 'fingerprint' && (
+              <div>
+                {isPolling && !fingerprintData && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Collecting browser fingerprint...</span>
+                  </div>
+                )}
+                {fingerprintData && (
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="mb-3 pb-3 border-b border-white/10">
+                      <p className="text-xs text-slate-400 font-semibold mb-1">Bot Detection</p>
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${fingerprintData.isBotLikely ? 'bg-red-400' : 'bg-green-400'}`} />
+                        <span className={`text-xs font-semibold ${fingerprintData.isBotLikely ? 'text-red-300' : 'text-green-300'}`}>
+                          {fingerprintData.isBotLikely ? 'Bot-like behavior detected' : 'Real browser detected'}
+                        </span>
+                      </div>
+                    </div>
+                    {fingerprintData.botIndicators?.length > 0 && (
+                      <div className="mb-3 pb-3 border-b border-white/10">
+                        <p className="text-xs text-slate-400 font-semibold mb-2">Bot Indicators</p>
+                        <div className="flex flex-wrap gap-1">
+                          {fingerprintData.botIndicators.map((indicator: string, idx: number) => (
+                            <span key={idx} className="text-xs bg-red-500/20 text-red-300 px-2 py-1 rounded border border-red-500/30">
+                              {indicator}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="text-xs text-slate-400">
+                      <p className="mb-1"><strong>Platform:</strong> {fingerprintData.platform}</p>
+                      <p className="mb-1"><strong>User Agent:</strong> {fingerprintData.userAgent?.substring(0, 50)}...</p>
+                      <p><strong>Timezone:</strong> {fingerprintData.timezone}</p>
+                    </div>
+                  </div>
+                )}
+                {!fingerprintData && !isPolling && (
+                  <p className="text-xs text-slate-400">No fingerprint data available</p>
+                )}
+              </div>
+            )}
+
+            {/* Campaign Tab */}
+            {activeTab === 'cluster' && (
+              <div>
+                {isPolling && !clusterData && (
+                  <div className="flex items-center gap-2 text-slate-300">
+                    <Loader className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Analyzing campaign...</span>
+                  </div>
+                )}
+                {clusterData && (
+                  <div className="p-4 bg-white/5 rounded-lg border border-white/10">
+                    <div className="mb-3 pb-3 border-b border-white/10">
+                      <p className="text-xs text-slate-400 font-semibold mb-1">Campaign Info</p>
+                      <p className="text-sm font-semibold text-slate-200">{clusterData.clusterName}</p>
+                      <p className="text-xs text-slate-400 mt-1">ID: {clusterData.clusterId}</p>
+                    </div>
+                    <div className="mb-3 pb-3 border-b border-white/10">
+                      <p className="text-xs text-slate-400 font-semibold mb-2">Campaign Stats</p>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div><span className="text-slate-400">Members:</span> <span className="text-slate-200 font-semibold">{clusterData.memberCount}</span></div>
+                        <div><span className="text-slate-400">Similarity:</span> <span className="text-slate-200 font-semibold">{clusterData.similarity}%</span></div>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 font-semibold mb-2">Structural Features</p>
+                      <div className="text-xs text-slate-300">
+                        <p><strong>Forms:</strong> {clusterData.formCount}</p>
+                        <p><strong>Input Types:</strong> {clusterData.inputTypes?.join(', ') || 'N/A'}</p>
+                        <p><strong>External Scripts:</strong> {clusterData.externalScripts?.length || 0}</p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {!clusterData && !isPolling && (
+                  <p className="text-xs text-slate-400">No campaign data available</p>
                 )}
               </div>
             )}
