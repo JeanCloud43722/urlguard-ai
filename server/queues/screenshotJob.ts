@@ -142,6 +142,34 @@ class ScreenshotJobProcessor {
         if (browser) {
           page = await browser.newPage();
           await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 10000 });
+          
+          // Detect JavaScript redirects
+          const jsRedirectDetected = await page.evaluate(() => {
+            const metaRefresh = document.querySelector('meta[http-equiv="refresh"]');
+            if (metaRefresh) {
+              const content = metaRefresh.getAttribute('content');
+              const urlMatch = content?.match(/url=(.+)/i);
+              return { type: 'meta-refresh', target: urlMatch?.[1] || null };
+            }
+            
+            const scripts = Array.from(document.querySelectorAll('script'));
+            for (const script of scripts) {
+              const content = script.textContent || '';
+              if (content.includes('window.location') || content.includes('location.href') || content.includes('location.replace')) {
+                const match = content.match(/location\.(href|replace)\s*=\s*['"]([^'"]+)['"]/);
+                if (match) {
+                  return { type: 'javascript', target: match[2] };
+                }
+              }
+            }
+            
+            return null;
+          });
+          
+          if (jsRedirectDetected) {
+            console.log(`[ScreenshotJob] JS redirect: ${jsRedirectDetected.type} -> ${jsRedirectDetected.target}`);
+          }
+          
           fingerprintData = await this.fingerprintService.collectFingerprint(page);
           console.log(`[ScreenshotJob] Browser fingerprint collected for ${url}`);
         }

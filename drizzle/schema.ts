@@ -186,3 +186,32 @@ export const webhooks = mysqlTable('webhooks', {
 
 export type Webhook = typeof webhooks.$inferSelect;
 export type InsertWebhook = typeof webhooks.$inferInsert;
+
+// Redirect chain tracking
+export const redirectChains = mysqlTable('redirect_chains', {
+  id: int('id').autoincrement().primaryKey(),
+  originalUrl: text('original_url').notNull(),
+  finalUrl: text('final_url'),
+  statusCode: int('status_code'),
+  redirectCount: int('redirect_count').default(0),
+  isMalicious: int('is_malicious').default(0), // 0 = false, 1 = true
+  detectedAt: timestamp('detected_at').defaultNow().notNull(),
+});
+
+export type RedirectChain = typeof redirectChains.$inferSelect;
+export type InsertRedirectChain = typeof redirectChains.$inferInsert;
+
+// Individual redirect hops
+export const redirectHops = mysqlTable('redirect_hops', {
+  id: int('id').autoincrement().primaryKey(),
+  chainId: int('chain_id').notNull(),
+  hopOrder: int('hop_order').notNull(),
+  fromUrl: text('from_url').notNull(),
+  toUrl: text('to_url'),
+  statusCode: int('status_code'),
+  responseTimeMs: int('response_time_ms'),
+  detectedAt: timestamp('detected_at').defaultNow().notNull(),
+});
+
+export type RedirectHop = typeof redirectHops.$inferSelect;
+export type InsertRedirectHop = typeof redirectHops.$inferInsert;

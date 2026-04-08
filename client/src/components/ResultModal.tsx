@@ -48,13 +48,14 @@ const ResultModal: React.FC<ResultModalProps> = ({
 }) => {
   const [isClosing, setIsClosing] = useState(false);
   const [timeLeft, setTimeLeft] = useState(autoCloseDuration / 1000);
-  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml' | 'fingerprint' | 'cluster' | 'deepfake'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'ocr' | 'metadata' | 'xml' | 'fingerprint' | 'cluster' | 'deepfake' | 'redirects'>('overview');
   const [ocrData, setOcrData] = useState<any>(null);
   const [metadataData, setMetadataData] = useState<any>(null);
   const [xmlData, setXmlData] = useState<any>(null);
   const [fingerprintData, setFingerprintData] = useState<any>(null);
   const [clusterData, setClusterData] = useState<any>(null);
   const [deepfakeData, setDeepfakeData] = useState<any>(null);
+  const [redirectData, setRedirectData] = useState<any>(null);
   const [isPolling, setIsPolling] = useState(false);
 
   // Polling queries
@@ -88,6 +89,11 @@ const ResultModal: React.FC<ResultModalProps> = ({
     { enabled: false, staleTime: 0 }
   );
 
+  const redirectQuery = trpc.urlChecker.getRedirectChain.useQuery(
+    { urlCheckId: result.id || 0 },
+    { enabled: false, staleTime: 0 }
+  );
+
   // Start polling when modal opens
   useEffect(() => {
     if (!isOpen || !result.id) return;
@@ -95,17 +101,19 @@ const ResultModal: React.FC<ResultModalProps> = ({
     setIsPolling(true);
     const pollInterval = setInterval(async () => {
       try {
-        const [ocr, metadata, xml, deepfake] = await Promise.all([
+        const [ocr, metadata, xml, deepfake, redirect] = await Promise.all([
           ocrQuery.refetch(),
           metadataQuery.refetch(),
           xmlQuery.refetch(),
           deepfakeQuery.refetch(),
+          redirectQuery.refetch(),
         ]);
 
         if (ocr.data) setOcrData(ocr.data);
         if (metadata.data) setMetadataData(metadata.data);
         if (xml.data) setXmlData(xml.data);
         if (deepfake.data) setDeepfakeData(deepfake.data);
+        if (redirect.data) setRedirectData(redirect.data);
 
         // Stop polling if all data is loaded
         if (ocr.data && metadata.data && xml.data && deepfake.data) {
@@ -249,6 +257,9 @@ const ResultModal: React.FC<ResultModalProps> = ({
             </button>
             <button onClick={() => setActiveTab('deepfake')} className={tabClasses('deepfake')}>
               Deepfake {deepfakeData && '✓'}
+            </button>
+            <button onClick={() => setActiveTab('redirects')} className={tabClasses('redirects')}>
+              Redirects {redirectData && '✓'}
             </button>
           </div>
 
@@ -541,6 +552,44 @@ const ResultModal: React.FC<ResultModalProps> = ({
                   <p className="text-xs text-slate-400">No deepfake risk data available</p>
                 ) : (
                   <p className="text-xs text-slate-400">Loading deepfake analysis...</p>
+                )}
+              </div>
+            )}
+
+            {/* Redirects Tab */}
+            {activeTab === 'redirects' && (
+              <div>
+                {redirectData ? (
+                  <div>
+                    <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded">
+                      <p className="text-xs font-semibold text-amber-300 mb-2">Redirect Chain</p>
+                      <p className="text-xs text-amber-200">
+                        {redirectData.chain.originalUrl} → {redirectData.chain.redirectCount} hops → {redirectData.chain.finalUrl}
+                      </p>
+                      {redirectData.chain.isMalicious && (
+                        <p className="text-xs text-red-400 mt-2">⚠️ Suspicious redirect pattern detected</p>
+                      )}
+                    </div>
+                    {redirectData.hops.length > 0 && (
+                      <div>
+                        <h4 className="text-xs font-semibold text-slate-300 mb-2">Redirect Hops</h4>
+                        <div className="space-y-2">
+                          {redirectData.hops.map((hop: any, idx: number) => (
+                            <div key={idx} className="text-xs p-2 bg-white/5 rounded border border-white/10">
+                              <p className="text-slate-400">Hop {idx + 1}: {hop.statusCode}</p>
+                              <p className="text-slate-500 text-xs mt-1 break-all">{hop.fromUrl}</p>
+                              <p className="text-slate-500 text-xs mt-1 break-all">→ {hop.toUrl}</p>
+                              <p className="text-slate-600 text-xs mt-1">{hop.responseTimeMs}ms</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ) : !isPolling ? (
+                  <p className="text-xs text-slate-400">No redirect data available</p>
+                ) : (
+                  <p className="text-xs text-slate-400">Analyzing redirects...</p>
                 )}
               </div>
             )}

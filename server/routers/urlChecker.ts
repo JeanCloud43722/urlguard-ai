@@ -13,6 +13,9 @@ import { getRedisService } from "../services/redis";
 import { protectedProcedureWithConcurrency } from "../_core/trpc";
 import crypto from "crypto";
 import { TRPCError } from '@trpc/server';
+import { detectRedirectChain } from "../services/redirectDetector";
+import { redirectChains, redirectHops } from "../../drizzle/schema";
+import { eq } from "drizzle-orm";
 
 export const urlCheckerRouter = router({
   checkURL: protectedProcedureWithConcurrency
@@ -23,6 +26,20 @@ export const urlCheckerRouter = router({
         const validation = validateAndNormalizeURL(input.url);
         if (!validation.isValid) {
           throw new Error(validation.error || "Invalid URL");
+        }
+
+        // 1a. Detect redirect chain
+        let redirectChain = null;
+        let analyzedUrl = validation.normalizedUrl;
+        try {
+          redirectChain = await detectRedirectChain(validation.normalizedUrl, 5);
+          analyzedUrl = redirectChain.finalUrl;
+          console.log(`[Redirect] ${validation.normalizedUrl} -> ${redirectChain.redirectCount} hops -> ${analyzedUrl}`);
+          if (redirectChain.isLikelyPhishing && redirectChain.redirectCount > 0) {
+            console.warn(`[Redirect] Suspicious redirect chain detected for ${validation.normalizedUrl}`);
+          }
+        } catch (redirectError) {
+          console.error(`[Redirect] Failed to detect redirects:`, redirectError);
         }
 
         // 1b. Check Redis cache
@@ -133,6 +150,39 @@ export const urlCheckerRouter = router({
           deepseekAnalysis: JSON.stringify(deepseekAnalysis),
           affiliateInfo: JSON.stringify(affiliateInfo),
         });
+
+        // 7a. Save redirect chain to database
+        if (redirectChain && redirectChain.hops.length > 0) {
+          try {
+            const db = await getDb();
+            if (db) {
+              const [chainResult] = await db.insert(redirectChains).values({
+                originalUrl: validation.normalizedUrl,
+                finalUrl: redirectChain.finalUrl,
+                statusCode: redirectChain.statusCode,
+                redirectCount: redirectChain.redirectCount,
+                isMalicious: redirectChain.isLikelyPhishing ? 1 : 0,
+                detectedAt: new Date(),
+              });
+              
+              for (let i = 0; i < redirectChain.hops.length; i++) {
+                const hop = redirectChain.hops[i];
+                await db.insert(redirectHops).values({
+                  chainId: (chainResult as any).insertId,
+                  hopOrder: i,
+                  fromUrl: hop.fromUrl,
+                  toUrl: hop.toUrl,
+                  statusCode: hop.statusCode,
+                  responseTimeMs: hop.responseTimeMs,
+                  detectedAt: new Date(),
+                });
+              }
+              console.log(`[URLChecker] Saved redirect chain with ${redirectChain.hops.length} hops`);
+            }
+          } catch (error) {
+            console.error('[URLChecker] Failed to save redirect chain:', error);
+          }
+        }
 
         // 8. Enqueue screenshot job if dangerous
         if (deepseekAnalysis.riskLevel === "dangerous") {
@@ -402,6 +452,29 @@ export const urlCheckerRouter = router({
       
       const { url } = await storagePut(`exports/${filename}`, content, mimeType);
       return { downloadUrl: url };
+    }),
+
+  getRedirectChain: protectedProcedure
+    .input(z.object({ urlCheckId: z.number() }))
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error('Database connection failed');
+      
+      const chain = await db
+        .select()
+        .from(redirectChains)
+        .where(eq(redirectChains.id, input.urlCheckId))
+        .limit(1);
+      
+      if (!chain.length) return null;
+      
+      const hops = await db
+        .select()
+        .from(redirectHops)
+        .where(eq(redirectHops.chainId, chain[0].id))
+        .orderBy(redirectHops.hopOrder);
+      
+      return { chain: chain[0], hops };
     }),
 });
 
