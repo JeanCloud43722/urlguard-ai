@@ -1,5 +1,5 @@
 import z from "zod";
-import { protectedProcedure, router } from "../_core/trpc";
+import { protectedProcedure, router, optionalAuthProcedure } from "../_core/trpc";
 import { createURLCheck, getUserURLChecks, createBatchJob, getUserBatchJobs, createOCRAnalysis, getDb } from "../db";
 import { getDeepSeekClient } from "../analyzers/deepseekEnhanced";
 import { validateAndNormalizeURL, extractAffiliateInfo, checkPhishingIndicators } from "../analyzers/urlAnalyzer";
@@ -18,7 +18,7 @@ import { redirectChains, redirectHops } from "../../drizzle/schema";
 import { eq } from "drizzle-orm";
 
 export const urlCheckerRouter = router({
-  checkURL: protectedProcedureWithConcurrency
+  checkURL: (process.env.NODE_ENV === 'development' ? optionalAuthProcedure : protectedProcedureWithConcurrency)
     .input(z.object({ url: z.string().min(1) }))
     .mutation(async ({ input, ctx }) => {
       try {
@@ -149,7 +149,7 @@ export const urlCheckerRouter = router({
 
         // 5a. Create database record with preliminary data
         const urlCheckRecord = await createURLCheck({
-          userId: ctx.user.id,
+          userId: ctx.user?.id || 999,
           url: input.url,
           normalizedUrl: validation.normalizedUrl,
           riskScore: preliminaryResult.riskScore,
@@ -224,7 +224,7 @@ export const urlCheckerRouter = router({
                   const processor = await getScreenshotJobProcessor();
                   await processor.enqueueScreenshot({
                     urlCheckId: urlCheckRecord.id,
-                    userId: ctx.user.id,
+                    userId: ctx.user?.id || 999,
                     url: validation.normalizedUrl,
                     riskLevel: deepseekAnalysis.riskLevel,
                     timestamp: Date.now(),
@@ -240,7 +240,7 @@ export const urlCheckerRouter = router({
                 try {
                   await queueOCRAnalysis({
                     checkId: urlCheckRecord.id,
-                    userId: ctx.user.id,
+                    userId: ctx.user?.id || 999,
                     screenshotBuffer: Buffer.from(''),
                     domain: new URL(validation.normalizedUrl).hostname || '',
                   });
@@ -255,7 +255,7 @@ export const urlCheckerRouter = router({
                 const certificateWarning = certificateRisks.length > 0 ? `\n\nCertificate Risks: ${certificateRisks.join(", ")}` : "";
                 await notifyOwner({
                   title: "🚨 High-Risk Phishing URL Detected",
-                  content: `User ${ctx.user.name} detected a dangerous URL: ${validation.normalizedUrl}\n\nRisk Score: ${deepseekAnalysis.riskScore}/100\nConfidence: ${Math.round(deepseekAnalysis.confidence * 100)}%\n\nAnalysis: ${deepseekAnalysis.analysis}${certificateWarning}\n\nIndicators: ${allReasons.join(", ")}`,
+                  content: `User ${ctx.user?.name || "Developer"} detected a dangerous URL: ${validation.normalizedUrl}\n\nRisk Score: ${deepseekAnalysis.riskScore}/100\nConfidence: ${Math.round(deepseekAnalysis.confidence * 100)}%\n\nAnalysis: ${deepseekAnalysis.analysis}${certificateWarning}\n\nIndicators: ${allReasons.join(", ")}`,
                 });
               }
 
@@ -333,7 +333,7 @@ export const urlCheckerRouter = router({
   getHistory: protectedProcedure
     .input(z.object({ limit: z.number().default(50) }))
     .query(async ({ input, ctx }) => {
-      const checks = await getUserURLChecks(ctx.user.id, input.limit);
+      const checks = await getUserURLChecks(ctx.user?.id || 999, input.limit);
       return checks.map((check) => ({
         id: check.id,
         url: check.url,
@@ -358,14 +358,14 @@ export const urlCheckerRouter = router({
 
       // Create batch job record
       await createBatchJob({
-        userId: ctx.user.id,
+        userId: ctx.user?.id || 999,
         jobId,
         status: "pending",
         totalUrls: input.urls.length,
       });
 
       // Start background processing (in production, use a job queue)
-      processBatchJob(jobId, input.urls, ctx.user.id).catch((error) => {
+      processBatchJob(jobId, input.urls, ctx.user?.id || 999).catch((error) => {
         console.error(`Batch job ${jobId} failed:`, error);
       });
 
@@ -382,7 +382,7 @@ export const urlCheckerRouter = router({
   exportJSON: protectedProcedure
     .input(z.object({ limit: z.number().default(100) }))
     .query(async ({ input, ctx }) => {
-      const checks = await getUserURLChecks(ctx.user.id, input.limit);
+      const checks = await getUserURLChecks(ctx.user?.id || 999, input.limit);
       const reportData = checks.map((check) => ({
         url: check.url,
         normalizedUrl: check.normalizedUrl,
@@ -399,7 +399,7 @@ export const urlCheckerRouter = router({
   exportCSV: protectedProcedure
     .input(z.object({ limit: z.number().default(100) }))
     .query(async ({ input, ctx }) => {
-      const checks = await getUserURLChecks(ctx.user.id, input.limit);
+      const checks = await getUserURLChecks(ctx.user?.id || 999, input.limit);
       const reportData = checks.map((check) => ({
         url: check.url,
         normalizedUrl: check.normalizedUrl,
@@ -416,7 +416,7 @@ export const urlCheckerRouter = router({
   exportHTML: protectedProcedure
     .input(z.object({ limit: z.number().default(100) }))
     .query(async ({ input, ctx }) => {
-      const checks = await getUserURLChecks(ctx.user.id, input.limit);
+      const checks = await getUserURLChecks(ctx.user?.id || 999, input.limit);
       const reportData = checks.map((check) => ({
         url: check.url,
         normalizedUrl: check.normalizedUrl,

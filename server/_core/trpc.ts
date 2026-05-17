@@ -110,3 +110,33 @@ export const adminProcedure = t.procedure.use(
 );
 
 export { deepseekLimiter };
+
+// Optional auth middleware for development mode
+const optionalAuthMiddleware = t.middleware(async opts => {
+  const { ctx, next } = opts;
+
+  // In development: create dummy user if not authenticated
+  if (process.env.NODE_ENV === 'development' && !ctx.user) {
+    ctx.user = {
+      id: 999,
+      openId: 'dev-user-' + Date.now(),
+      email: 'dev@localhost',
+      name: 'Developer',
+      loginMethod: 'dev',
+      role: 'admin' as const,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    };
+    console.log('[Dev Auth] Created dummy user for testing');
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      user: ctx.user,
+    },
+  });
+});
+
+export const optionalAuthProcedure = t.procedure.use(optionalAuthMiddleware);
