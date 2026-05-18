@@ -165,7 +165,48 @@ export const urlCheckerRouter = router({
         // Start all background jobs (fire-and-forget)
         console.log("[Phase4] Starte Background Jobs...");
         setImmediate(() => {
-          runDeepSeekAnalysis().catch(console.error);
+          // Fraud detection with minimal token usage
+          const runFraudDetection = async () => {
+            try {
+              const { detectFraudWithDeepSeek } = await import(
+                "../services/fraudDetector"
+              );
+              const fraudResult = await detectFraudWithDeepSeek(
+                validation.normalizedUrl,
+                indicators
+              );
+              if (fraudResult) {
+                console.log(
+                  "[Fraud] ✅ DeepSeek-Update: Score",
+                  fraudResult.fraud_score
+                );
+                // Update cache with final result
+                if (cacheKey) {
+                  try {
+                    const { getCache } = await import(
+                      "../services/cacheWrapper"
+                    );
+                    const cache = await getCache();
+                    const finalResult = {
+                      ...preliminaryResult,
+                      riskScore: fraudResult.fraud_score,
+                      riskLevel: fraudResult.risk_level,
+                      analysis: fraudResult.reasons?.join(", ") || preliminaryResult.analysis,
+                      confidence: fraudResult.confidence,
+                      isPreliminary: false,
+                    };
+                    await cache.set(cacheKey, finalResult, 86400);
+                    console.log("[Fraud] ✅ Cache aktualisiert");
+                  } catch (err) {
+                    console.warn("[Fraud] Cache-Update-Fehler:", (err as Error).message);
+                  }
+                }
+              }
+            } catch (err) {
+              console.error("[Fraud] Hintergrundjob fehlgeschlagen:", (err as Error).message);
+            }
+          };
+          runFraudDetection().catch(console.error);
           fetchCertificateAsync().catch(console.error);
           detectRedirectsAsync().catch(console.error);
         });
