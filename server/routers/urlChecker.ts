@@ -179,6 +179,53 @@ export const urlCheckerRouter = router({
       }
     }),
 
+  // Get single check by ID
+  getCheckById: publicProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      console.log('[getCheckById] Abruf für ID:', input.id);
+      try {
+        const { getDb } = await import("../db");
+        const { urlChecks } = await import("../../drizzle/schema");
+        const { eq } = await import("drizzle-orm");
+        const db = await getDb();
+        if (!db) throw new Error('Keine DB-Verbindung');
+        const result = await db
+          .select()
+          .from(urlChecks)
+          .where(eq(urlChecks.id, input.id))
+          .limit(1);
+        if (!result.length) return null;
+        const check = result[0];
+        return {
+          id: check.id,
+          url: check.url,
+          normalizedUrl: check.normalizedUrl,
+          riskScore: check.riskScore,
+          riskLevel: check.riskLevel,
+          analysis: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis as string).analysis : 'Analyse läuft noch...',
+          indicators: check.phishingReasons ? JSON.parse(check.phishingReasons as string) : [],
+          affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo as string) : {},
+          confidence: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis as string).confidence : 0.6,
+          isPreliminary: !check.deepseekAnalysis || check.deepseekAnalysis === '{}',
+          createdAt: check.createdAt,
+        };
+      } catch (err) {
+        console.error('[getCheckById] Fehler:', (err as Error).message);
+        return null;
+      }
+    }),
+
+  // Get history of checks for current user
+  getHistory: publicProcedure
+    .input(z.object({ limit: z.number().default(50) }))
+    .query(async ({ input }) => {
+      console.log('[getHistory] Abruf mit limit:', input.limit);
+      // TODO: Implement database query to fetch user's URL checks
+      // For now, return empty array to avoid blocking
+      return [];
+    }),
+
   // Health check endpoint
   health: publicProcedure.query(async () => {
     let redisStatus = "unknown";
