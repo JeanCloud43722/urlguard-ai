@@ -422,15 +422,17 @@ export default function Home() {
                     <p className="text-fluid-sm text-slate-400">No checks yet</p>
                   ) : (
                     historyQuery.data.map((check) => {
-                      let phishingReasons: string[] = [];
+                       let phishingReasons: any[] = [];
                       try {
-                        phishingReasons = check.phishingReasons && typeof check.phishingReasons === 'string' ? JSON.parse(check.phishingReasons) : (Array.isArray(check.phishingReasons) ? check.phishingReasons : []);
+                        const pr = (check as any).phishingReasons;
+                        phishingReasons = pr && typeof pr === 'string' ? JSON.parse(pr) : (Array.isArray(pr) ? pr : []);
                       } catch (e) {
                         console.warn('Failed to parse phishingReasons:', e);
                       }
                       let deepseekAnalysis: any = null;
                       try {
-                        deepseekAnalysis = check.deepseekAnalysis && typeof check.deepseekAnalysis === 'string' ? JSON.parse(check.deepseekAnalysis) : check.deepseekAnalysis;
+                        const ds = (check as any).deepseekAnalysis;
+                        deepseekAnalysis = ds && typeof ds === 'string' ? JSON.parse(ds) : ds;
                       } catch (e) {
                         console.warn('Failed to parse deepseekAnalysis:', e);
                       }

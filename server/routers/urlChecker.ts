@@ -23,11 +23,12 @@ export const urlCheckerRouter = router({
 
         // Phase 2: Cache Check (optional, mit Fallback)
         console.log("[Phase2] Prüfe Cache...");
+        let cacheKey = "";
         try {
           const crypto = await import("crypto");
           const { getCache } = await import("../services/cacheWrapper");
           const cache = await getCache();
-          const cacheKey = crypto.createHash("sha256").update(validation.normalizedUrl).digest("hex");
+          cacheKey = crypto.createHash("sha256").update(validation.normalizedUrl).digest("hex");
           const cached = await cache.get(cacheKey);
           
           if (cached) {
@@ -68,9 +69,10 @@ export const urlCheckerRouter = router({
           };
         }
         
-        // Phase 4: Vorläufiges Ergebnis + Background Jobs
-        console.log("[Phase4] Starte Progressive Response...");
+        // Phase 4: Erstelle DB-Eintrag mit vorläufigem Ergebnis
+        console.log("[Phase4] Erstelle DB-Eintrag...");
         
+        const { createURLCheck } = await import("../db");
         const preliminaryResult = {
           id: 0,
           url: input.url,
@@ -86,106 +88,71 @@ export const urlCheckerRouter = router({
           createdAt: new Date(),
         };
 
-        // Get cache key for later updates
-        let cacheKey = "";
+        let checkId = 0;
         try {
-          const crypto = await import("crypto");
-          cacheKey = crypto.createHash("sha256").update(validation.normalizedUrl).digest("hex");
-        } catch (err) {
-          console.warn("[Phase4] Cache-Key-Fehler:", (err as Error).message);
+          // Create DB record with preliminary result
+          const dbRecord = await createURLCheck({
+            userId: 999, // Fallback user ID (no auth in public procedure)
+            url: input.url,
+            normalizedUrl: validation.normalizedUrl,
+            riskScore: preliminaryResult.riskScore,
+            riskLevel: preliminaryResult.riskLevel,
+            phishingReasons: JSON.stringify(indicators),
+            deepseekAnalysis: JSON.stringify({}), // Empty = preliminary
+            affiliateInfo: JSON.stringify(affiliateInfo),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+          
+          checkId = dbRecord?.id || 0;
+          console.log("[Phase4] ✅ DB-Eintrag erstellt mit ID:", checkId);
+          preliminaryResult.id = checkId;
+        } catch (dbErr) {
+          console.error("[Phase4] ⚠️ DB-Fehler (nicht kritisch):", (dbErr as Error).message);
+          // Continue without DB - just use cache
         }
 
-        // Background Job 1: DeepSeek Analysis
-        const runDeepSeekAnalysis = async () => {
-          try {
-            const { getDeepSeekClient } = await import("../analyzers/deepseekEnhanced");
-            const client = getDeepSeekClient();
-            console.log("[DeepSeek] Starte Analyse für:", validation.normalizedUrl);
-            
-            const finalAnalysis = await client.analyzeWithFullContext(
-              validation.normalizedUrl,
-              {}, // certificateInfo (später)
-              indicators,
-              affiliateInfo
-            );
-            
-            console.log("[DeepSeek] ✅ Analyse abgeschlossen:", {
-              riskScore: finalAnalysis.riskScore,
-              riskLevel: finalAnalysis.riskLevel,
-            });
-            
-            // Update cache with final result
-            if (cacheKey) {
-              try {
-                const { getCache } = await import("../services/cacheWrapper");
-                const cache = await getCache();
-                const finalResult = {
-                  ...preliminaryResult,
-                  ...finalAnalysis,
-                  isPreliminary: false,
-                };
-                await cache.set(cacheKey, finalResult, 86400);
-                console.log("[Phase4] ✅ Cache aktualisiert mit finalem Ergebnis");
-              } catch (err) {
-                console.warn("[Phase4] Cache-Update-Fehler:", (err as Error).message);
-              }
-            }
-          } catch (err) {
-            console.error("[DeepSeek] ❌ Fehler:", (err as Error).message);
-          }
-        };
-        
-        // Background Job 2: SSL Certificate Fetching
-        const fetchCertificateAsync = async () => {
-          try {
-            const { fetchCertificate } = await import("../utils/certificate");
-            const hostname = new URL(validation.normalizedUrl).hostname;
-            if (hostname) {
-              const cert = await fetchCertificate(hostname);
-              console.log("[Cert] ✅ Zertifikat abgerufen für:", hostname);
-            }
-          } catch (err) {
-            console.warn("[Cert] ⚠️ Fehler:", (err as Error).message);
-          }
-        };
-        
-        // Background Job 3: Redirect Detection
-        const detectRedirectsAsync = async () => {
-          try {
-            const { detectRedirectChain } = await import("../services/redirectDetector");
-            const chain = await detectRedirectChain(validation.normalizedUrl);
-            if (chain.redirectCount > 0) {
-              console.log(`[Redirect] ✅ ${chain.redirectCount} Weiterleitungen erkannt`);
-            }
-          } catch (err) {
-            console.warn("[Redirect] ⚠️ Fehler:", (err as Error).message);
-          }
-        };
-        
-        // Start all background jobs (fire-and-forget)
-        console.log("[Phase4] Starte Background Jobs...");
+        // Phase 5: Starte Background Jobs (fire-and-forget)
+        console.log("[Phase5] Starte Background Jobs...");
         setImmediate(() => {
-          // Fraud detection with minimal token usage
+          // Background Job: DeepSeek Fraud Detection
           const runFraudDetection = async () => {
+            console.log("[Fraud] 🚀 Hintergrundjob gestartet für Check", checkId);
             try {
-              const { detectFraudWithDeepSeek } = await import(
-                "../services/fraudDetector"
-              );
+              const { detectFraudWithDeepSeek } = await import("../services/fraudDetector");
+              console.log("[Fraud] 📞 Rufe detectFraudWithDeepSeek auf...");
+              
               const fraudResult = await detectFraudWithDeepSeek(
                 validation.normalizedUrl,
                 indicators
               );
+              
               if (fraudResult) {
-                console.log(
-                  "[Fraud] ✅ DeepSeek-Update: Score",
-                  fraudResult.fraud_score
-                );
+                console.log("[Fraud] ✅ DeepSeek-Antwort erhalten:", {
+                  fraud_score: fraudResult.fraud_score,
+                  risk_level: fraudResult.risk_level,
+                });
+                
+                // Update DB with final result
+                if (checkId > 0) {
+                  try {
+                    const { updateCheck } = await import("../db");
+                    await updateCheck(checkId, {
+                      riskScore: fraudResult.fraud_score,
+                      riskLevel: fraudResult.risk_level,
+                      deepseekAnalysis: JSON.stringify(fraudResult),
+                      updatedAt: new Date(),
+                    });
+                    console.log("[Fraud] ✅ DB aktualisiert mit finalem Ergebnis");
+                  } catch (updateErr) {
+                    console.error("[Fraud] ❌ DB-Update-Fehler:", (updateErr as Error).message);
+                  }
+                }
+                
                 // Update cache with final result
                 if (cacheKey) {
                   try {
-                    const { getCache } = await import(
-                      "../services/cacheWrapper"
-                    );
+                    const { getCache } = await import("../services/cacheWrapper");
                     const cache = await getCache();
                     const finalResult = {
                       ...preliminaryResult,
@@ -197,62 +164,125 @@ export const urlCheckerRouter = router({
                     };
                     await cache.set(cacheKey, finalResult, 86400);
                     console.log("[Fraud] ✅ Cache aktualisiert");
-                  } catch (err) {
-                    console.warn("[Fraud] Cache-Update-Fehler:", (err as Error).message);
+                  } catch (cacheErr) {
+                    console.warn("[Fraud] ⚠️ Cache-Update-Fehler:", (cacheErr as Error).message);
+                  }
+                }
+              } else {
+                console.warn("[Fraud] ⚠️ DeepSeek lieferte kein Ergebnis");
+                
+                // Fallback: Mark as final even without DeepSeek result
+                if (checkId > 0) {
+                  try {
+                    const { updateCheck } = await import("../db");
+                    await updateCheck(checkId, {
+                      deepseekAnalysis: JSON.stringify({
+                        fraud_score: preliminaryResult.riskScore,
+                        risk_level: preliminaryResult.riskLevel,
+                        reasons: ["DeepSeek nicht erreichbar, Ergebnis basiert auf Heuristik"],
+                        confidence: 0.5,
+                      }),
+                      updatedAt: new Date(),
+                    });
+                    console.log("[Fraud] ✅ DB mit Fallback-Ergebnis aktualisiert");
+                  } catch (updateErr) {
+                    console.error("[Fraud] ❌ Fallback-Update-Fehler:", (updateErr as Error).message);
                   }
                 }
               }
             } catch (err) {
-              console.error("[Fraud] Hintergrundjob fehlgeschlagen:", (err as Error).message);
+              console.error("[Fraud] ❌ Kritischer Fehler im Hintergrundjob:", (err as Error).message);
+              
+              // Final fallback: Mark as complete even on error
+              if (checkId > 0) {
+                try {
+                  const { updateCheck } = await import("../db");
+                  await updateCheck(checkId, {
+                    deepseekAnalysis: JSON.stringify({
+                      fraud_score: preliminaryResult.riskScore,
+                      risk_level: preliminaryResult.riskLevel,
+                      reasons: ["Fehler bei der Analyse - Ergebnis basiert auf Heuristik"],
+                      confidence: 0.5,
+                    }),
+                    updatedAt: new Date(),
+                  });
+                } catch (finalErr) {
+                  console.error("[Fraud] ❌ Finaler Fallback fehlgeschlagen:", (finalErr as Error).message);
+                }
+              }
             }
           };
-          runFraudDetection().catch(console.error);
-          fetchCertificateAsync().catch(console.error);
-          detectRedirectsAsync().catch(console.error);
+          
+          // Start fraud detection
+          runFraudDetection().catch((err) => {
+            console.error("[Fraud] Unerwarteter Fehler:", err);
+          });
         });
         
-        console.log("[Phase4] ✅ Vorläufiges Ergebnis zurückgegeben, Background Jobs laufen");
+        console.log("[Phase5] ✅ Vorläufiges Ergebnis zurückgegeben, Background Jobs laufen");
         return preliminaryResult;
         
       } catch (err) {
-        console.error("[checkURL] ❌ Fehler:", (err as Error).message);
+        console.error("[checkURL] ❌ Kritischer Fehler:", (err as Error).message);
         throw err;
       }
     }),
 
-  // Get single check by ID
+  // Get single check by ID (for polling)
   getCheckById: publicProcedure
     .input(z.object({ id: z.number() }))
     .query(async ({ input }) => {
-      console.log('[getCheckById] Abruf für ID:', input.id);
+      console.log('[getCheckById] 🔍 Abruf für ID:', input.id);
       try {
-        const { getDb } = await import("../db");
-        const { urlChecks } = await import("../../drizzle/schema");
-        const { eq } = await import("drizzle-orm");
-        const db = await getDb();
-        if (!db) throw new Error('Keine DB-Verbindung');
-        const result = await db
-          .select()
-          .from(urlChecks)
-          .where(eq(urlChecks.id, input.id))
-          .limit(1);
-        if (!result.length) return null;
-        const check = result[0];
+        if (input.id <= 0) {
+          console.warn('[getCheckById] ⚠️ Ungültige ID:', input.id);
+          return null;
+        }
+
+        const { getURLCheckById } = await import("../db");
+        const check = await getURLCheckById(input.id);
+        
+        if (!check) {
+          console.warn('[getCheckById] ⚠️ Check nicht gefunden:', input.id);
+          return null;
+        }
+
+        console.log('[getCheckById] ✅ Check gefunden:', {
+          id: check.id,
+          riskScore: check.riskScore,
+          deepseekAnalysis: check.deepseekAnalysis ? "vorhanden" : "leer",
+        });
+
+        // Parse deepseek analysis
+        let deepData = null;
+        try {
+          if (check.deepseekAnalysis && check.deepseekAnalysis !== '{}') {
+            deepData = JSON.parse(check.deepseekAnalysis);
+          }
+        } catch (parseErr) {
+          console.warn('[getCheckById] ⚠️ Parse-Fehler für deepseekAnalysis:', (parseErr as Error).message);
+        }
+
+        // Calculate isPreliminary: true if no deepseek data or empty object
+        const isPreliminary = !deepData || Object.keys(deepData).length === 0;
+        
+        console.log('[getCheckById] 📊 isPreliminary:', isPreliminary, 'deepData:', deepData ? 'ja' : 'nein');
+
         return {
           id: check.id,
           url: check.url,
           normalizedUrl: check.normalizedUrl,
-          riskScore: check.riskScore,
-          riskLevel: check.riskLevel,
-          analysis: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis as string).analysis : 'Analyse läuft noch...',
-          indicators: check.phishingReasons ? JSON.parse(check.phishingReasons as string) : [],
-          affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo as string) : {},
-          confidence: check.deepseekAnalysis ? JSON.parse(check.deepseekAnalysis as string).confidence : 0.6,
-          isPreliminary: !check.deepseekAnalysis || check.deepseekAnalysis === '{}',
+          riskScore: deepData?.fraud_score ?? check.riskScore,
+          riskLevel: deepData?.risk_level ?? check.riskLevel,
+          analysis: deepData?.reasons?.join(', ') || check.deepseekAnalysis || 'Analyse läuft noch...',
+          indicators: check.phishingReasons ? JSON.parse(check.phishingReasons) : [],
+          affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo) : {},
+          confidence: deepData?.confidence ?? 0.6,
+          isPreliminary: isPreliminary,
           createdAt: check.createdAt,
         };
       } catch (err) {
-        console.error('[getCheckById] Fehler:', (err as Error).message);
+        console.error('[getCheckById] ❌ Fehler:', (err as Error).message);
         return null;
       }
     }),
@@ -262,9 +292,55 @@ export const urlCheckerRouter = router({
     .input(z.object({ limit: z.number().default(50) }))
     .query(async ({ input }) => {
       console.log('[getHistory] Abruf mit limit:', input.limit);
-      // TODO: Implement database query to fetch user's URL checks
-      // For now, return empty array to avoid blocking
-      return [];
+      try {
+        const { getDb } = await import("../db");
+        const { urlChecks } = await import("../../drizzle/schema");
+        const { desc } = await import("drizzle-orm");
+        
+        const db = await getDb();
+        if (!db) {
+          console.warn('[getHistory] Keine DB-Verbindung');
+          return [];
+        }
+        
+        // Get recent checks (for public procedure, get all recent checks)
+        const checks = await db
+          .select()
+          .from(urlChecks)
+          .orderBy(desc(urlChecks.createdAt))
+          .limit(input.limit);
+        
+        console.log('[getHistory] OK: Gefunden', checks.length, 'Checks');
+        
+        // Transform to frontend format
+        return checks.map(check => {
+          let deepData = null;
+          try {
+            if (check.deepseekAnalysis && check.deepseekAnalysis !== '{}') {
+              deepData = JSON.parse(check.deepseekAnalysis as string);
+            }
+          } catch (e) {
+            // ignore parse errors
+          }
+          
+          return {
+            id: check.id,
+            url: check.url,
+            normalizedUrl: check.normalizedUrl,
+            riskScore: deepData?.fraud_score ?? check.riskScore,
+            riskLevel: deepData?.risk_level ?? check.riskLevel,
+            analysis: deepData?.reasons?.join(', ') || 'Analyse läuft noch...',
+            indicators: check.phishingReasons ? JSON.parse(check.phishingReasons as string) : [],
+            affiliateInfo: check.affiliateInfo ? JSON.parse(check.affiliateInfo as string) : {},
+            confidence: deepData?.confidence ?? 0.6,
+            isPreliminary: !deepData || Object.keys(deepData).length === 0,
+            createdAt: check.createdAt,
+          };
+        });
+      } catch (err) {
+        console.error('[getHistory] Fehler:', (err as Error).message);
+        return [];
+      }
     }),
 
   // Health check endpoint
